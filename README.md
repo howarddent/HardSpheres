@@ -56,3 +56,7 @@ Command line: `--n=`, `--phi=`, `--maxwell`, `--hold`, `--speed=`, `--compress=<
 
 - Non-ideal gas with attraction: done as a square well in `Sticky/` (StickySpheres), with binding, inelastic capture, breaking, clusters and condensation. See its README.
 - A counting-sort cell list in place of fixed-capacity cells, so memory follows N rather than the box volume.
+
+## Licence
+
+MIT; see [LICENSE](LICENSE). Covers `Sticky/` too.
