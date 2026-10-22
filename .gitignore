@@ -1,0 +1,10 @@
+lib/
+*.o
+*.ppu
+*.res
+*.lps
+*.bak
+backup/
+HardSpheres
+gascheck
+*.exe

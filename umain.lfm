@@ -1,0 +1,9 @@
+object fmMain: TfmMain
+  Left = 100
+  Height = 860
+  Top = 60
+  Width = 1400
+  Caption = 'Hard-sphere gas'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+end
