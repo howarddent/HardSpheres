@@ -8,7 +8,7 @@ An ideal gas, and at higher density a non-ideal one, simulated as hard spheres i
 
 The sticky version in [`Sticky/`](Sticky/) adds attraction, binding and gravity:
 
-![StickySpheres: a Lennard-Jones liquid pool on the floor under its vapour](docs/sticky-pool.png)
+![StickySpheres: a Lennard-Jones liquid wetting the floor under its vapour](docs/sticky-pool.png)
 
 ## Build and run
 

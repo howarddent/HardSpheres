@@ -22,7 +22,8 @@
     core     r reaches 1 (shell 0), approaching: elastic bounce
     inward   r reaches R[s] from shell s (s > 0), or the cutoff R[K]
              from outside (the pair joins the lists), approaching:
-               capture on, the step downhill (dU < 0) and u_n^2/4 < eps:
+               capture on, one of the pair free (no bonds), the step
+               downhill (dU < 0) and u_n^2/4 < eps:
                  the pair steps in with u_n unchanged and -dU is given off
                  (inelastic: a slow pair falls into the well and sticks);
                otherwise, if u_n^2/4 > dU, it steps in, u_n^2/4 changing
@@ -51,6 +52,8 @@
     bound pair rattles in shells 0.06 wide - and a fixed number of sweeps
     let a backlog snowball in dense clusters, pairs drifting far outside
     the shells they were listed in.
+  The floor can attract: a one-body well of depth epsF for centres below
+  zw (one diameter above contact), so a liquid can wet it and spread.
   Gravity accelerates both spheres of a pair alike, so their relative
   motion - all the pair events use - is a straight line.
 */
@@ -63,7 +66,7 @@ __kernel void move(__global float4* pos, __global float4* vel, __global float4* 
                    const int n, const float dt, const float4 L, const float W, const float r,
                    __global const int* nn, __global const int* shl,
                    __global const float* U, const int bondEdge, const float eps,
-                   const float vscale, const float g,
+                   const float vscale, const float g, const float epsF, const float zw,
                    __global float8* partial, __local float8* scratch)
 {
     int i = get_global_id(0);
@@ -73,6 +76,7 @@ __kernel void move(__global float4* pos, __global float4* vel, __global float4* 
         float4 p = pos[i];
         float4 v = vel[i];
         float imp = 0.0f, impP = 0.0f;
+        float oldz = p.z;
         p.xyz += v.xyz * dt + corr[i].xyz;
         p.z -= 0.5f * g * dt * dt;
         v.z -= g * dt;
@@ -93,6 +97,38 @@ __kernel void move(__global float4* pos, __global float4* vel, __global float4* 
                 v.z = nv;
             }
         }
+        // the floor's attraction: a well of depth epsF for centres below zw.
+        // Crossing zw downwards a sphere gains epsF of energy along z;
+        // upwards it loses it, or bounces back if it hasn't enough. tau is
+        // how long ago it crossed (the position after it follows the new
+        // velocity), capped as the pair corrections are. If the move
+        // crossed against v.z (a pair correction did it) the sphere is put
+        // back on its side instead
+        float inWell = 0.0f;
+        if (epsF > 0.0f) {
+            int was = oldz < zw, now = p.z < zw;
+            if (was && !now) {
+                if (v.z <= 0.0f) p.z = 2.0f * zw - p.z;
+                else if (v.z * v.z > 2.0f * epsF) {
+                    float tau = min((p.z - zw) / v.z, 2.0f * dt);
+                    float nv = sqrt(v.z * v.z - 2.0f * epsF);
+                    p.z = zw + nv * tau;
+                    v.z = nv;
+                } else {
+                    p.z = 2.0f * zw - p.z;
+                    v.z = -v.z;
+                }
+            } else if (!was && now) {
+                if (v.z >= 0.0f) p.z = 2.0f * zw - p.z;
+                else {
+                    float tau = min((p.z - zw) / v.z, 2.0f * dt);
+                    float nv = -sqrt(v.z * v.z + 2.0f * epsF);
+                    p.z = max(zw + nv * tau, r);
+                    v.z = nv;
+                }
+            }
+            if (p.z < zw) inWell = 1.0f;
+        }
         int m = nn[i];
         int nbond = 0;
         float pe = 0.0f;
@@ -104,7 +140,7 @@ __kernel void move(__global float4* pos, __global float4* vel, __global float4* 
         p.w = (float)nbond + min(length(v.xyz) / vscale, 0.999f);
         pos[i] = p;
         vel[i] = v;
-        acc = (float8)(imp, impP, 0.5f * dot(v.xyz, v.xyz), (float)nbond, p.z, 0.5f * eps * pe, 0.0f, 0.0f);
+        acc = (float8)(imp, impP, 0.5f * dot(v.xyz, v.xyz), (float)nbond, p.z, 0.5f * eps * pe, inWell, 0.0f);
     }
     scratch[l] = acc;
     barrier(CLK_LOCAL_MEM_FENCE);
@@ -344,7 +380,15 @@ __kernel void apply(__global const float4* pos, __global const float4* vin,
             float uold = (s < K) ? U[s] : 0.0f;
             float unw = (snew < K) ? U[snew] : 0.0f;
             float dU = eps * (unw - uold);
-            if (type != EV_OUT && capture && dU < 0.0f && 0.25f * un2 < eps) {
+            // capture stands in for the third body that carries a gas
+            // pair's energy away, so it applies only when one of the two
+            // is free (no bonds as of this substep's move: pos.w < 1). In
+            // a cluster the neighbours do that by ordinary collisions;
+            // capturing there too drained the liquid's heat (the
+            // thermostat's uniform rescaling put it into the vapour) and
+            // froze the liquid solid
+            int gas = pos[i].w < 1.0f || pos[j].w < 1.0f;
+            if (type != EV_OUT && capture && gas && dU < 0.0f && 0.25f * un2 < eps) {
                 unew = un;                    // steps in, giving off -dU
                 moved = 1;
                 if (first) { atomic_inc(&cnt[3]); atomic_inc(&cnt[4 + b]); }

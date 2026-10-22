@@ -84,7 +84,7 @@ type
     FPot: TStepPotential;
     FT0: Double;
     FTime: Double;
-    FTemp, FKE, FPE, FPairPE, FPress, FPistonPress: Double;
+    FTemp, FKE, FPE, FPairPE, FFloorPE, FPress, FPistonPress: Double;
     FRates: array[0..3] of Double;      // core, formed, broken, captured per sphere per unit time
     FTotals: array[0..3] of Int64;
     FBondCount: Integer;
@@ -110,6 +110,9 @@ type
     TargetT: Double;
     Eps: Double;                  // energy scale: the square well's depth, LJ's epsilon
     Gravity: Double;              // acceleration along -z, diameters per time^2
+    // the floor's attraction: a well of depth FloorEps for centres within
+    // FloorRange of touching the floor, so a liquid can wet it
+    FloorEps, FloorRange: Double;
     Capture: Boolean;             // slow pairs stick, giving off the step energy
     StepFrac: Double;
     MaxSweeps: Integer;           // pairs/apply passes per substep, at most
@@ -150,6 +153,7 @@ type
     property KineticEnergy: Double read FKE;
     property PotentialEnergy: Double read FPE;    // in gravity
     property PairEnergy: Double read FPairPE;     // of the pair potential
+    property FloorEnergy: Double read FFloorPE;   // in the floor's well
     property Pressure: Double read FPress;
     property PistonPressure: Double read FPistonPress;
     property Bonds: Integer read FBondCount;
@@ -250,6 +254,7 @@ begin
   PressureFrames := 20;
   Eps := 1;
   Capture := True;
+  FloorRange := 1;
   FPot := LennardJonesPotential;
 end;
 
@@ -482,6 +487,7 @@ begin
   FOverflowCount := 0;
   FBondCount := 0;
   FPE := 0;
+  FFloorPE := 0;
   FPairPE := 0;
   FRadiated := 0;
   FThermostatWork := 0;
@@ -627,11 +633,11 @@ end;
 
 procedure TStickySim.Frame;
 var
-  vchar, dt, W, imp, impP, ke, ends, sz, pe, ax, ay, az, tf, alpha, x, umin: Double;
+  vchar, dt, W, imp, impP, ke, ends, sz, pe, ax, ay, az, tf, alpha, x, umin, nw: Double;
   sub, sw, i, n, b, nsw: Integer;
   pend, one, zero1: LongInt;
   Lv: array[0..3] of Single;
-  dtS, WS, rS, ics, epsS, vsS, tmS, gS: Single;
+  dtS, WS, rS, ics, epsS, vsS, tmS, gS, efS, zwS: Single;
   capS, KS, beS: LongInt;
   Zero: array[0..4 + MaxShells] of LongInt;
   nc: array[0..4 + MaxShells] of LongInt;
@@ -647,7 +653,8 @@ begin
   // and one falling half the box's height by sqrt(g Lz)
   umin := 0;
   for i := 0 to FPot.K - 1 do umin := Min(umin, FPot.U[i]);
-  vchar := Sqrt(3 * Max(FTemp, 1e-6) + 2 * Max(Eps, 0) * Abs(umin) + Max(Gravity, 0) * FLz);
+  vchar := Sqrt(3 * Max(FTemp, 1e-6) + 2 * Max(Eps, 0) * Abs(umin) + Max(Gravity, 0) * FLz
+    + 2 * Max(FloorEps, 0));
   FSubsteps := Max(1, Ceil(tf * vchar / StepFrac));
   dt := tf / FSubsteps;
 
@@ -665,6 +672,8 @@ begin
   vsS := 2.2 * Sqrt(3 * Max(FTemp, 1e-6));
   tmS := 2 * dt;
   gS := Max(Gravity, 0);
+  efS := Max(FloorEps, 0);
+  zwS := 0.5 + Max(FloorRange, 0);
   KS := FPot.K;
   beS := FPot.BondEdge;
   nsw := 0;
@@ -705,8 +714,10 @@ begin
     Arg(KMove, 12, 4, @epsS);
     Arg(KMove, 13, 4, @vsS);
     Arg(KMove, 14, 4, @gS);
-    Arg(KMove, 15, SizeOf(cl_mem), @FPartial);
-    Arg(KMove, 16, 32 * FLocal, nil);
+    Arg(KMove, 15, 4, @efS);
+    Arg(KMove, 16, 4, @zwS);
+    Arg(KMove, 17, SizeOf(cl_mem), @FPartial);
+    Arg(KMove, 18, 32 * FLocal, nil);
     Enqueue(KMove, FN, FLocal);
     Enqueue(KClear, FNCells);
     Enqueue(KBin, FN);
@@ -790,7 +801,7 @@ begin
   FTime := FTime + tf;
   FMeanSweeps := nsw / FSubsteps;
 
-  imp := 0; impP := 0; ke := 0; ends := 0; sz := 0; pe := 0;
+  imp := 0; impP := 0; ke := 0; ends := 0; sz := 0; pe := 0; nw := 0;
   for i := 0 to FGroups - 1 do
   begin
     imp := imp + FHostPartial[8 * i];
@@ -799,6 +810,7 @@ begin
     ends := ends + FHostPartial[8 * i + 3];
     sz := sz + FHostPartial[8 * i + 4];
     pe := pe + FHostPartial[8 * i + 5];
+    nw := nw + FHostPartial[8 * i + 6];
   end;
   // all averaged over the frame's substeps (as of each substep's move);
   // the height from the lowest a centre can be, z = 1/2
@@ -808,6 +820,7 @@ begin
   FBondCount := Round(ends / FSubsteps / 2);
   FPE := Max(Gravity, 0) * (sz / FSubsteps - 0.5 * FN);
   FPairPE := pe / FSubsteps;
+  FFloorPE := -Max(FloorEps, 0) * nw / FSubsteps;
   for i := 0 to 3 do FTotals[i] := FTotals[i] + nc[i];
   // a capture at boundary b gives off the step there
   for b := 1 to FPot.K do
@@ -837,7 +850,7 @@ end;
 
 function TStickySim.Energy: Double;
 begin
-  Result := FKE + FPE + FPairPE;
+  Result := FKE + FPE + FPairPE + FFloorPE;
 end;
 
 procedure TStickySim.ReadVelocities(var V: array of Single);

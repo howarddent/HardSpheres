@@ -7,7 +7,7 @@ program stickycheck;
 
   1. Eps = 0: plain hard spheres; PV/NT against Carnahan-Starling.
   2. Capture off, no thermostat: KE + PE_gravity + pair energy constant
-     (SW, LJ, LJ in gravity).
+     (SW, LJ, LJ in gravity, and with the floor's attraction).
   3. Capture off, thermostat, low density, equilibrated: pairs per sphere
      within the cutoff and within 1.5 (the bonds) against the Boltzmann
      counts rho sum_s e^(-Eps U_s/T) (4 pi/3)(R_s+1^3 - R_s^3) (a little
@@ -69,12 +69,13 @@ begin
     [Phi, T, P / (rho * T), (1 + Phi + Phi * Phi - Phi * Phi * Phi) / Power(1 - Phi, 3)]));
 end;
 
-procedure EnergyCheck(const Pot: TStepPotential; Phi, T0, G: Double);
+procedure EnergyCheck(const Pot: TStepPotential; Phi, T0, G: Double; EF: Double = 0);
 var
   E0, Emin, Emax: Double;
   f: Integer;
 begin
   Configure(1, G, False, False);
+  S.FloorEps := EF;
   S.Setup(N, Phi, T0, Pot, False, 0);
   S.Frame;
   E0 := S.Energy;
@@ -84,8 +85,9 @@ begin
     S.Frame;
     Emin := Min(Emin, S.Energy); Emax := Max(Emax, S.Energy);
   end;
-  WriteLn(Format('  %s, phi %.2f, g %.2f: T %.3f -> %.3f, %d bonds, pair energy/N %.3f;  E/N %.5f -> %.5f, range %.2g',
-    [Pot.Name, Phi, G, T0, S.Temperature, S.Bonds, S.PairEnergy / N, E0 / N, S.Energy / N, (Emax - Emin) / N]));
+  S.FloorEps := 0;
+  WriteLn(Format('  %s, phi %.2f, g %.2f, floor %.1f: T %.3f -> %.3f, %d bonds, pair energy/N %.3f;  E/N %.5f -> %.5f, range %.2g',
+    [Pot.Name, Phi, G, EF, T0, S.Temperature, S.Bonds, S.PairEnergy / N, E0 / N, S.Energy / N, (Emax - Emin) / N]));
 end;
 
 procedure EquilibriumCheck(const Pot: TStepPotential; Phi, T: Double);
@@ -249,6 +251,7 @@ begin
     EnergyCheck(SW, 0.05, 0.6, 0);
     EnergyCheck(LJ, 0.05, 0.6, 0);
     EnergyCheck(LJ, 0.05, 1.0, 0.05);
+    EnergyCheck(LJ, 0.05, 1.0, 0.05, 1.5);
     WriteLn('3. capture off, thermostat: equilibrium at low density');
     EquilibriumCheck(SW, 0.01, 2.0);
     EquilibriumCheck(LJ, 0.01, 2.0);

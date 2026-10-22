@@ -19,10 +19,16 @@ unit ustickymain;
     the well depth eps, and "capture": on each downhill step inward a slow
       pair (less than eps of relative energy along its line of centres)
       gives the step's energy off instead of speeding up - an inelastic
-      collision, so slow pairs stick. Unticked, the fluid conserves energy
+      collision, so slow pairs stick; only when one of the pair is free
+      (condensation from the gas: in a cluster the neighbours take the
+      energy). Unticked, the fluid conserves energy
       and pairs bind only when a third sphere carries the energy away;
     gravity g, along -z (down the screen), which pulls a condensate to
       the floor and gives the gas a barometric profile, scale height T/g;
+    the floor's attraction eps_f, a well one diameter deep above it:
+      from about 1.5 the liquid wets the floor and spreads into a film
+      (0: a hard floor, which the liquid doesn't wet, so it lies as a
+      puddle);
     piston position and speed: the piston is the top face, so only the
       box's height changes with its volume.
   Readouts: T, V, bonds and energies, the rates of collisions, bonding,
@@ -30,7 +36,7 @@ unit ustickymain;
   square-well virial estimate; below them the cluster-size distribution
   and the speed distribution.
 
-  Command line: --n, --phi, --lambda, --eps, --g, --temp, --nocapture,
+  Command line: --n, --phi, --lambda, --eps, --g, --floor, --temp, --nocapture,
   --nohold, --maxwell, --snapshot=<file.png> (after --frames=<n>, default
   200, saves the view and window and prints the readouts).
 *******************************************************************************}
@@ -58,8 +64,8 @@ type
     sePhi, seLambda: TFloatSpinEdit;
     cbMaxwell, cbHold, cbCapture, cbShowBonds: TCheckBox;
     btnReset, btnPause: TButton;
-    tbTemp, tbEps, tbGrav, tbPiston, tbSpeed: TTrackBar;
-    lblTemp, lblEps, lblGrav, lblPiston, lblSpeed: TLabel;
+    tbTemp, tbEps, tbGrav, tbFloor, tbPiston, tbSpeed: TTrackBar;
+    lblTemp, lblEps, lblGrav, lblFloor, lblPiston, lblSpeed: TLabel;
     memInfo: TMemo;
     pbHist: TPaintBox;
     lblStatus: TLabel;
@@ -105,6 +111,7 @@ type
     procedure TempChange(Sender: TObject);
     procedure EpsChange(Sender: TObject);
     procedure GravChange(Sender: TObject);
+    procedure FloorChange(Sender: TObject);
     procedure CaptureChange(Sender: TObject);
     procedure PistonChange(Sender: TObject);
     procedure SpeedChange(Sender: TObject);
@@ -117,6 +124,7 @@ type
     function SliderTemp: Double;
     function SliderEps: Double;
     function SliderGrav: Double;
+    function SliderFloor: Double;
     function SliderPiston: Double;
     function SliderSpeed: Double;
     function MinLz: Double;
@@ -201,6 +209,8 @@ begin
     tbEps.Position := Round(50 * StrToFloatDef(Application.GetOptionValue('eps'), 1));
   if Application.HasOption('g') then
     tbGrav.Position := Round(1000 * StrToFloatDef(Application.GetOptionValue('g'), 0.05));
+  if Application.HasOption('floor') then
+    tbFloor.Position := Round(20 * StrToFloatDef(Application.GetOptionValue('floor'), 1.5));
   if Application.HasOption('temp') then
     tbTemp.Position := Round(100 + 100 * Log10(StrToFloatDef(Application.GetOptionValue('temp'), 1)));
   if Application.HasOption('maxwell') then cbMaxwell.Checked := True;
@@ -259,7 +269,7 @@ var
   end;
 begin
   Caption := 'Sticky spheres: binding and breaking (OpenCL + OpenGL)';
-  Width := 1450; Height := 960;
+  Width := 1450; Height := 1020;
   FPanel := TPanel.Create(Self);
   FPanel.Parent := Self;
   FPanel.Align := alRight;
@@ -314,7 +324,7 @@ begin
   y := y + 30;
 
   lblTemp := AddLabel('', y);
-  tbTemp := Track(y + 16, 200, 100, @TempChange);
+  tbTemp := Track(y + 16, 200, 85, @TempChange);    // T 0.71: liquid and vapour
   y := y + 46;
   cbHold := AddCheck('hold T (thermostat)', y, True);
   cbHold.OnChange := @HoldChange;
@@ -327,6 +337,9 @@ begin
   y := y + 26;
   lblGrav := AddLabel('', y);
   tbGrav := Track(y + 16, 200, 50, @GravChange);
+  y := y + 46;
+  lblFloor := AddLabel('', y);
+  tbFloor := Track(y + 16, 80, 30, @FloorChange);     // 1.5: the liquid wets the floor
   y := y + 46;
   lblPiston := AddLabel('', y);
   tbPiston := Track(y + 16, 1000, 500, @PistonChange);
@@ -351,12 +364,12 @@ begin
 
   memInfo := TMemo.Create(Self);
   memInfo.Parent := FPanel;
-  memInfo.Left := 6; memInfo.Top := y; memInfo.Width := FPanel.Width - 12; memInfo.Height := 262;
+  memInfo.Left := 6; memInfo.Top := y; memInfo.Width := FPanel.Width - 12; memInfo.Height := 278;
   memInfo.ReadOnly := True;
   memInfo.ScrollBars := ssNone;
   memInfo.Font.Name := 'Monospace';
   memInfo.Font.Size := 8;
-  y := y + 266;
+  y := y + 282;
 
   pbHist := TPaintBox.Create(Self);
   pbHist.Parent := FPanel;
@@ -374,6 +387,7 @@ begin
   TempChange(nil);
   EpsChange(nil);
   GravChange(nil);
+  FloorChange(nil);
   SpeedChange(nil);
 end;
 
@@ -390,6 +404,23 @@ begin
 end;
 
 // gravity 0 .. 0.2 diameters per unit time^2, along -z
+function TfmMain.SliderFloor: Double;
+begin
+  Result := tbFloor.Position / 20;
+end;
+
+// the floor's attraction, a well one diameter deep above it: from about
+// 1.5 eps the liquid wets the floor and spreads over it as a film
+procedure TfmMain.FloorChange(Sender: TObject);
+begin
+  if SliderFloor > 0 then
+    lblFloor.Caption := Format('floor attraction eps_f = %.2f  (eps_f/eps %.2f; wets from ~1.5)',
+      [SliderFloor, SliderFloor / Max(SliderEps, 1e-9)])
+  else
+    lblFloor.Caption := 'floor attraction eps_f = 0  (hard floor, not wetted)';
+  if FSim <> nil then FSim.FloorEps := SliderFloor;
+end;
+
 function TfmMain.SliderGrav: Double;
 begin
   Result := tbGrav.Position / 1000;
@@ -425,6 +456,7 @@ procedure TfmMain.EpsChange(Sender: TObject);
 begin
   lblEps.Caption := Format('well depth eps = %.2f   (eps/T = %.2f)', [SliderEps, SliderEps / SliderTemp]);
   if FSim <> nil then FSim.Eps := SliderEps;
+  if (lblFloor <> nil) and (tbFloor <> nil) then FloorChange(nil);
 end;
 
 // the scale height T/g of a dilute gas, against the box's height
@@ -539,6 +571,7 @@ begin
   glFinish;
   FSim.Eps := SliderEps;
   FSim.Gravity := SliderGrav;
+  FSim.FloorEps := SliderFloor;
   FSim.Capture := cbCapture.Checked;
   if cbPot.ItemIndex = 1 then
     FSim.Setup(n, sePhi.Value, SliderTemp, SquareWellPotential(seLambda.Value), not cbMaxwell.Checked, FVBO)
@@ -723,6 +756,19 @@ begin
   glDisable(GL_POINT_SPRITE);
   glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
+  // the floor, tinted blue as deep as its attraction
+  if FSim.FloorEps > 0 then
+  begin
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+    glColor4f(0.3, 0.55, 1.0, Min(0.45, 0.12 * FSim.FloorEps));
+    glBegin(GL_QUADS);
+    glVertex3f(0, 0, 0); glVertex3f(FSim.Lx, 0, 0); glVertex3f(FSim.Lx, FSim.Ly, 0); glVertex3f(0, FSim.Ly, 0);
+    glEnd;
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+  end;
   // the box: floor and side walls fixed, the top face (z = Lz) the piston
   x0 := 0; y0 := 0; z0 := 0; x1 := FSim.Lx; y1 := FSim.Ly;
   lz := FSim.Lz;
@@ -888,6 +934,8 @@ begin
     L.Add(Format('bonds (r < %.2f) %d, %.3f per sphere', [FSim.Potential.R[FSim.Potential.BondEdge], FSim.Bonds, 2 * FSim.Bonds / n]));
     L.Add(Format('energy per sphere: KE %.4f, gravity %.4f, pairs %.4f',
       [FSim.KineticEnergy / n, FSim.PotentialEnergy / n, FSim.PairEnergy / n]));
+    if FSim.FloorEps > 0 then
+      L.Add(Format('  floor %.4f (%.0f spheres in its well)', [FSim.FloorEnergy / n, -FSim.FloorEnergy / FSim.FloorEps]));
     L.Add(Format('  total %.4f; given off %.4f,', [FSim.Energy / n, FSim.Radiated / n]));
     L.Add(Format('  thermostat added %.4f', [FSim.ThermostatWork / n]));
     L.Add('per sphere per unit time:');
