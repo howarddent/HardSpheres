@@ -104,8 +104,13 @@ __kernel void move(__global float4* pos, __global float4* vel, __global float4* 
         // velocity), capped as the pair corrections are. If the move
         // crossed against v.z (a pair correction did it) the sphere is put
         // back on its side instead
+        // The well's pull is a force between floor and sphere too, so its
+        // momentum changes count in the wall impulse (negative: towards
+        // the floor); without them a populated well made the floor's
+        // pressure read many times too high
         float inWell = 0.0f;
         if (epsF > 0.0f) {
+            float vz0 = v.z;
             int was = oldz < zw, now = p.z < zw;
             if (was && !now) {
                 if (v.z <= 0.0f) p.z = 2.0f * zw - p.z;
@@ -127,6 +132,7 @@ __kernel void move(__global float4* pos, __global float4* vel, __global float4* 
                     v.z = nv;
                 }
             }
+            imp += v.z - vz0;
             if (p.z < zw) inWell = 1.0f;
         }
         int m = nn[i];

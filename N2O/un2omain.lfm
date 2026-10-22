@@ -1,0 +1,9 @@
+object fmMain: TfmMain
+  Left = 80
+  Height = 1020
+  Top = 40
+  Width = 1450
+  Caption = 'Sticky spheres'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+end

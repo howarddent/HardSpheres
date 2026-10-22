@@ -1,0 +1,8 @@
+lib/
+*.o
+*.ppu
+*.res
+*.lps
+*.bak
+backup/
+N2OPhase
