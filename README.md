@@ -2,6 +2,14 @@
 
 An ideal gas, and at higher density a non-ideal one, simulated as hard spheres in a box with a piston. The simulation runs in OpenCL on the GPU, and OpenGL draws the spheres in real time from the same buffer.
 
+![100,000 hard spheres at packing fraction 0.05, coloured by speed, with the speed distribution against Maxwell-Boltzmann](docs/hardspheres.png)
+
+*100,000 spheres at packing fraction 0.05, coloured by speed. The orange top face is the piston. On the right are the controls, the readouts (pressure against Carnahan–Starling), and the speed histogram against Maxwell–Boltzmann.*
+
+The sticky version in [`Sticky/`](Sticky/) adds attraction, binding and gravity:
+
+![StickySpheres: a Lennard-Jones liquid pool on the floor under its vapour](docs/sticky-pool.png)
+
 ## Build and run
 
 ```

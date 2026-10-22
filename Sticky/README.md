@@ -6,6 +6,14 @@ again. The simulation runs on the GPU in
 OpenCL and is drawn in OpenGL from the same buffer. It is a sibling of
 HardSpheres, the folder above, and shares its `clgl.pas`.
 
+![A Lennard-Jones liquid pool on the floor under its vapour](../docs/sticky-pool.png)
+
+*5,000 spheres, stepped Lennard-Jones, T = 0.8, gravity 0.05, capture off, after 125 time units: a liquid pool on the floor under a thin vapour. Colour shows bonds per sphere (grey-blue free, green to red more bonds); bonds are drawn as lines. Speeds follow Maxwell–Boltzmann, and the clusters histogram shows one cluster holding almost every sphere.*
+
+![Droplets forming in zero gravity with capture on](../docs/sticky-droplets.png)
+
+*The same spheres at T = 1 with no gravity and capture on, after 30 time units: slow pairs stick and give off energy, so droplets nucleate and grow. With capture on the speeds are not Maxwellian: most spheres are slow, with a long fast tail.*
+
 ## Build and run
 
 ```
