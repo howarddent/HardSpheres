@@ -261,6 +261,7 @@ begin
     tbSpeed.Position := Round(100 + 66.67 * Log10(StrToFloatDef(Application.GetOptionValue('speed'), 0.3)));
   if Application.HasOption('nohold') then cbHold.Checked := False;
   FSim := TStickySim.Create;
+  FSim.AllowIntegrated := Application.HasOption('allow-igpu');
   Application.OnIdle := @AppIdle;
 end;
 

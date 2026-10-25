@@ -29,6 +29,8 @@ fpc -O2 -Fu.. -FUlib stickycheck.lpr
 ./stickycheck [N [max sweeps]] # headless checks, about 2 min at N = 20000
 ```
 
+As in HardSpheres, OpenCL won't run on an integrated GPU (it may be driving the display, and a hang there can lock up the desktop). Pass `--allow-igpu` to `StickySpheres` or `stickycheck` to run on it anyway.
+
 GUI options:
 
 - **Setup:** `--n`, `--phi`, `--lambda=<w>` (square well of width w, else stepped LJ), `--eps`, `--g`, `--floor=<eps_f>` (the floor's attraction, default 1.5; 0 for a hard floor), `--temp`, `--maxwell`.

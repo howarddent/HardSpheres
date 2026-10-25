@@ -44,6 +44,7 @@ found there at run time) and `../clgl.pas`, so build Sticky's sources as they
 are; nothing is copied. Options are those of StickySpheres plus
 `--compress=<f>` (after 100 frames move the lid to f times its height),
 `--speed=<piston speed>` and `--capture` (off by default here).
+Like them, it won't run OpenCL on an integrated GPU unless given `--allow-igpu`.
 `--snapshot` also prints the text under the diagram.
 
 ## N₂O data

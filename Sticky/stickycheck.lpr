@@ -19,7 +19,7 @@ program stickycheck;
      and the largest distance any listed pair is outside its shell (a
      health check: events missed).
 
-  Build: fpc -O2 -Fu.. -FUlib stickycheck.lpr      Run: ./stickycheck [N [max sweeps]]
+  Build: fpc -O2 -Fu.. -FUlib stickycheck.lpr      Run: ./stickycheck [N [max sweeps]] [--allow-igpu]
 *******************************************************************************}
 
 {$mode objfpc}{$H+}
@@ -227,10 +227,18 @@ const
   Temps: array[0..2] of Double = (2.0, 1.0, 0.6);
 var
   Msg: string;
-  k: Integer;
+  k, i: Integer;
+  AllowIGPU: Boolean;
+  Args: array of string;
 begin
-  N := StrToIntDef(ParamStr(1), 20000);
-  if ParamCount >= 2 then Sweeps := StrToInt(ParamStr(2)) else Sweeps := 32;
+  // --allow-igpu anywhere; the rest are N and max sweeps, in order
+  AllowIGPU := False;
+  Args := nil;
+  for i := 1 to ParamCount do
+    if ParamStr(i) = '--allow-igpu' then AllowIGPU := True
+    else Insert(ParamStr(i), Args, Length(Args));
+  if Length(Args) >= 1 then N := StrToIntDef(Args[0], 20000) else N := 20000;
+  if Length(Args) >= 2 then Sweeps := StrToInt(Args[1]) else Sweeps := 32;
   if not LoadOpenCL(Msg) then begin WriteLn(Msg); Halt(1); end;
   Randomize;
   SW := SquareWellPotential(1.5);
@@ -238,6 +246,7 @@ begin
   S := TStickySim.Create;
   try
     S.MaxSweeps := Sweeps;
+    S.AllowIntegrated := AllowIGPU;
     S.InitCL(ExtractFilePath(ParamStr(0)) + 'sticky.cl', nil, nil);
     WriteLn('OpenCL on ', S.DeviceName, ', N = ', N, ', at most ', Sweeps, ' sweeps per substep');
     Write('LJ shells:');

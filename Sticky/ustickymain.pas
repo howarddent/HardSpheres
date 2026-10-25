@@ -217,6 +217,7 @@ begin
   if Application.HasOption('nocapture') then cbCapture.Checked := False;
   if Application.HasOption('nohold') then cbHold.Checked := False;
   FSim := TStickySim.Create;
+  FSim.AllowIntegrated := Application.HasOption('allow-igpu');
   Application.OnIdle := @AppIdle;
 end;
 
