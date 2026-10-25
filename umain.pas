@@ -22,6 +22,10 @@ unit umain;
   piston, NT/V and the Carnahan-Starling pressure, PV/NT, PV^(5/3), the
   collision rate, and below them the speed histogram against the
   Maxwell-Boltzmann distribution at the current temperature.
+  Far right, the P-V diagram (ugaspv.pas): the state as a red dot with
+  its trail, against the ideal-gas and hard-sphere isotherms at T and,
+  after a move without the thermostat, the adiabat; under it a short
+  explanation of what the dot is doing.
 
   OpenCL-OpenGL sharing needs both on one GPU. On a hybrid-graphics laptop
   start the program with NVIDIA PRIME offload (run-nvidia.sh); otherwise
@@ -42,7 +46,7 @@ interface
 uses
   Classes, SysUtils, Math, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   StdCtrls, ComCtrls, Spin, LCLType, FPImage, FPWritePNG,
-  GL, GLU, GLext, OpenGLContext, ugassim;
+  GL, GLU, GLext, OpenGLContext, ugassim, ugaspv;
 
 type
 
@@ -64,6 +68,9 @@ type
     memInfo: TMemo;
     pbHist: TPaintBox;
     lblStatus: TLabel;
+    FPVPanel: TPanel;
+    FPV: TGasPVDiagram;
+    memPV: TMemo;
     FSim: TGasSim;
     FGLReady, FSimReady, FPaused, FUpdating: Boolean;
     FProg: GLuint;
@@ -105,6 +112,8 @@ type
     procedure DrawScene;
     procedure UpdateHistogram;
     procedure UpdateInfo;
+    procedure UpdatePV;
+    procedure PVPanelResize(Sender: TObject);
     function SliderTemp: Double;
     function SliderPiston: Double;
     function SliderSpeed: Double;
@@ -157,6 +166,9 @@ const
     '  float s = pow(max(dot(reflect(-l, n), vec3(0.0, 0.0, 1.0)), 0.0), 24.0);'#10 +
     '  gl_FragColor = vec4(vColor * (0.25 + 0.75 * d) + vec3(0.5 * s), 1.0);'#10 +
     '}'#10;
+
+const
+  PVH = 520;     // the P-V diagram's height
 
 { TfmMain }
 
@@ -214,11 +226,31 @@ var
   end;
 begin
   Caption := 'Hard-sphere gas (OpenCL + OpenGL)';
-  Width := 1400; Height := 860;
+  Width := 1880; Height := 860;
+  // the P-V diagram at the far right, created first so it sits outside
+  // the controls
+  FPVPanel := TPanel.Create(Self);
+  FPVPanel.Parent := Self;
+  FPVPanel.Align := alRight;
+  FPVPanel.Width := 480;
+  FPVPanel.BevelOuter := bvNone;
+  FPVPanel.OnResize := @PVPanelResize;
+  FPV := TGasPVDiagram.Create(Self);
+  FPV.Parent := FPVPanel;
+  FPV.SetBounds(0, 0, 480, PVH);
+  memPV := TMemo.Create(Self);
+  memPV.Parent := FPVPanel;
+  memPV.SetBounds(6, PVH + 4, 468, 300);
+  memPV.ReadOnly := True;
+  memPV.ScrollBars := ssAutoVertical;
+  memPV.WordWrap := True;
+  memPV.Font.Size := 9;
+
   FPanel := TPanel.Create(Self);
   FPanel.Parent := Self;
   FPanel.Align := alRight;
   FPanel.Width := 400;
+  FPanel.Left := FPVPanel.Left - 400;
   FPanel.BevelOuter := bvNone;
 
   FGL := TOpenGLControl.Create(Self);
@@ -461,6 +493,9 @@ begin
   FStartPV := 0;
   FStartTV := 0;
   FFrames := 0;
+  // the volume axis: to the farthest the piston can go, plus a margin
+  FPV.VMax := (FSim.Lx - 1) * (FSim.Ly - 1) * (FSim.LzMax - 1) / FSim.Count * 1.1;
+  FPV.ClearState;
   if FSim.Shared then
     lblStatus.Caption := 'OpenCL on ' + FSim.DeviceName + ', sharing the GL buffer'
   else
@@ -506,7 +541,11 @@ begin
         FStartTV := FSim.Temperature * Power(FSim.Volume, 2 / 3);
         FSim.LzTarget := FSim.Lz * StrToFloatDef(Application.GetOptionValue('compress'), 0.5);
       end;
-      if FFrames mod 10 = 1 then UpdateHistogram;
+      if FFrames mod 10 = 1 then
+      begin
+        UpdateHistogram;
+        UpdatePV;
+      end;
     end;
     DrawScene;
     FGL.SwapBuffers;
@@ -524,6 +563,7 @@ begin
     begin
       UpdateHistogram;
       UpdateInfo;
+      UpdatePV;
       SaveSnapshot;
       FSnapshot := '';
       Application.Terminate;
@@ -738,6 +778,67 @@ begin
   end;
 end;
 
+procedure TfmMain.PVPanelResize(Sender: TObject);
+begin
+  FPV.SetBounds(0, 0, FPVPanel.ClientWidth, PVH);
+  memPV.SetBounds(6, PVH + 4, FPVPanel.ClientWidth - 12, FPVPanel.ClientHeight - PVH - 10);
+end;
+
+// the state on the P-V diagram, per sphere, and what it is doing
+procedure TfmMain.UpdatePV;
+var
+  L: TStrings;
+  T, v, P, Z, Zcs, adiabat: Double;
+  moved: Boolean;
+begin
+  // the pressure is smoothed over ~20 frames: wait for it to settle
+  if (not FSimReady) or (FFrames < 3 * FSim.PressureFrames) then Exit;
+  T := FSim.Temperature;
+  v := FSim.Volume / FSim.Count;
+  P := FSim.Pressure;
+  if (T <= 0) or (P <= 0) then Exit;
+  moved := FStartPV > 0;
+  // FStartPV is P V^(5/3) for the whole box; per sphere it is / N^(5/3)
+  if moved and not FSim.Thermostat then
+    adiabat := FStartPV / Power(FSim.Count, 5 / 3)
+  else
+    adiabat := 0;
+  FPV.SetState(T, v, P, adiabat);
+  Z := P * v / T;
+  Zcs := CarnahanStarling(FSim.PackingFraction);
+  L := memPV.Lines;
+  L.BeginUpdate;
+  try
+    L.Clear;
+    L.Add(Format('Volume per sphere %.3g, pressure %.4g, T %.3g: PV/NkT = %.3f '
+      + '(1 for an ideal gas; %.3f for hard spheres at this density).', [v, P, T, Z, Zcs]));
+    L.Add('');
+    if Zcs < 1.1 then
+      L.Add('The spheres take up little of the box, so the gas is nearly ideal: '
+        + 'the dot sits on the dashed ideal-gas isotherm, P = NkT/V.')
+    else
+      L.Add(Format('The spheres now fill %.0f %% of the box. They have no attraction, '
+        + 'but their own volume is no longer negligible, so the pressure is above '
+        + 'the ideal gas''s (the solid hard-sphere isotherm): less room to move in, '
+        + 'more collisions with the walls.', [100 * FSim.PackingFraction]));
+    L.Add('');
+    if FSim.Thermostat then
+      L.Add('Temperature held (isothermal): move the piston and the dot runs along '
+        + 'the isotherm. Halve the volume and the pressure doubles (Boyle''s law).')
+    else
+      L.Add('Temperature not held: a slow piston compresses the gas adiabatically. '
+        + 'The work done heats it, so the dot climbs across the isotherms along the '
+        + 'dotted adiabat, PV^(5/3) constant, steeper than Boyle''s hyperbola. '
+        + 'Tick "hold T" for an isothermal compression.');
+    L.Add('');
+    L.Add('However far the piston goes there is no flat part: with no attraction '
+      + 'between the spheres the gas never condenses, unlike a vapour '
+      + '(compare the N2O program).');
+  finally
+    L.EndUpdate;
+  end;
+end;
+
 procedure TfmMain.GLMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   FDragging := True;
@@ -805,6 +906,7 @@ begin
   end;
   WriteLn(lblStatus.Caption);
   WriteLn(memInfo.Lines.Text);
+  WriteLn(memPV.Lines.Text);
 end;
 
 end.
