@@ -180,6 +180,7 @@ begin
   if Application.HasOption('speed') then
     tbSpeed.Position := Round(100 + 66.67 * Log10(StrToFloatDef(Application.GetOptionValue('speed'), 1)));
   FSim := TGasSim.Create;
+  FSim.AllowIntegrated := Application.HasOption('allow-igpu');
   Application.OnIdle := @AppIdle;
 end;
 

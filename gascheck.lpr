@@ -10,7 +10,7 @@ program gascheck;
        2 n sqrt(pi T) g(1), g(1) = (1 - phi/2)/(1 - phi)^3;
     5. adiabatic compression of a dilute gas to half its height: T rises
        as V^(-2/3).
-  Build: fpc -O2 gascheck.lpr      Run: ./gascheck [N]
+  Build: fpc -O2 gascheck.lpr      Run: ./gascheck [N] [--allow-igpu]
 *******************************************************************************}
 
 {$mode objfpc}{$H+}
@@ -21,6 +21,8 @@ uses
 
 var
   N: Integer;
+  AllowIGPU: Boolean;
+  i: Integer;
 
 function Kernel: string;
 begin
@@ -72,6 +74,7 @@ var
 begin
   S := TGasSim.Create;
   try
+    S.AllowIntegrated := AllowIGPU;
     S.InitCL(Kernel, nil, nil);
     S.Setup(N, Phi, 1.0, True, 0);
     if Phi = 0.05 then WriteLn('device: ', S.DeviceName);
@@ -122,6 +125,7 @@ var
 begin
   S := TGasSim.Create;
   try
+    S.AllowIntegrated := AllowIGPU;
     S.InitCL(Kernel, nil, nil);
     S.Setup(N, 0.01, 1.0, False, 0);
     for f := 1 to 50 do S.Frame;
@@ -149,6 +153,9 @@ begin
   DefaultFormatSettings.DecimalSeparator := '.';
   RandSeed := 20261020;
   N := StrToIntDef(ParamStr(1), 20000);
+  AllowIGPU := False;
+  for i := 1 to ParamCount do
+    if ParamStr(i) = '--allow-igpu' then AllowIGPU := True;
   Equilibrium(0.05, 400);
   Equilibrium(0.30, 400);
   Adiabatic;

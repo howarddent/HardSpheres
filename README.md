@@ -23,6 +23,8 @@ fpc -O2 gascheck.lpr && ./gascheck [N]     # headless physics checks
 
 On a hybrid-graphics laptop, OpenGL runs on the integrated GPU unless NVIDIA PRIME offload is requested. OpenCL–OpenGL sharing needs both on the same device. `run-nvidia.sh` sets `__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia`. Without it the program still runs, copying positions through the host, and says so in the status line.
 
+The program will not run OpenCL on an integrated GPU (one sharing memory with the CPU). On a laptop that GPU drives the display, and a hang there can lock up the desktop past a failed GPU reset. That can happen if the NVIDIA driver isn't loaded, for example after a kernel update without its NVIDIA module. With no other GPU, the program stops with an error. Pass `--allow-igpu` (to `HardSpheres` or `gascheck`) to run on the integrated GPU anyway.
+
 ## Physics
 
 Units: sphere diameter 1, mass 1, k_B = 1.

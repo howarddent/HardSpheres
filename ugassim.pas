@@ -78,6 +78,10 @@ type
     Thermostat: Boolean;
     TargetT: Double;
     StepFrac: Double;             // rms displacement per substep, diameters
+    // run on an integrated GPU (memory shared with the CPU). Off by
+    // default: on a laptop that GPU drives the display, and a long kernel
+    // on it can hang the desktop past a failed GPU reset
+    AllowIntegrated: Boolean;
     SimTimePerFrame: Double;
     PressureFrames: Integer;
     constructor Create;
@@ -183,7 +187,30 @@ var
   Err: cl_int;
   bestP: cl_platform_id;
   SL: TStringList;
+  Skipped: string;
+
+  // an integrated GPU, refused unless AllowIntegrated; its name is noted
+  function Refused(D: cl_device_id): Boolean;
+  var
+    unified: cl_uint;
+    s: string;
+  begin
+    unified := 0;
+    clGetDeviceInfo(D, CL_DEVICE_HOST_UNIFIED_MEMORY, SizeOf(unified), @unified, nil);
+    Result := (unified <> 0) and not AllowIntegrated;
+    if Result then
+    begin
+      s := DeviceString(D, CL_DEVICE_NAME);
+      if Pos(s, Skipped) = 0 then
+      begin
+        if Skipped <> '' then Skipped := Skipped + ', ';
+        Skipped := Skipped + s;
+      end;
+    end;
+  end;
+
 begin
+  Skipped := '';
   if not LoadOpenCL(Msg) then raise Exception.Create(Msg);
   np := 0;
   if (clGetPlatformIDs(0, nil, @np) <> CL_SUCCESS) or (np = 0) then
@@ -206,7 +233,7 @@ begin
       Props[6] := 0;
       Dev := nil;
       if (GetGLInfo(@Props[0], CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR, SizeOf(Dev), @Dev, nil) <> CL_SUCCESS)
-         or (Dev = nil) then Continue;
+         or (Dev = nil) or Refused(Dev) then Continue;
       FCtx := clCreateContext(@Props[0], 1, @Dev, nil, nil, @Err);
       if (Err = CL_SUCCESS) and (FCtx <> nil) then
       begin
@@ -230,6 +257,7 @@ begin
       clGetDeviceIDs(Plats[p], CL_DEVICE_TYPE_GPU, nd, @Devs[0], nil);
       for d := 0 to nd - 1 do
       begin
+        if Refused(Devs[d]) then Continue;
         cu := 0;
         clGetDeviceInfo(Devs[d], CL_DEVICE_MAX_COMPUTE_UNITS, SizeOf(cu), @cu, nil);
         if cu > bestCU then
@@ -240,6 +268,10 @@ begin
         end;
       end;
     end;
+    if (FDevice = nil) and (Skipped <> '') then
+      raise Exception.Create('only an integrated GPU (' + Skipped + ') is available to OpenCL, '
+        + 'and it may be driving the display: is the NVIDIA driver loaded (nvidia-smi)? '
+        + 'Pass --allow-igpu to run on it anyway');
     if FDevice = nil then raise Exception.Create('no OpenCL GPU device');
     Props[0] := CL_CONTEXT_PLATFORM; Props[1] := cl_context_properties(bestP); Props[2] := 0;
     FCtx := clCreateContext(@Props[0], 1, @FDevice, nil, nil, @Err);
