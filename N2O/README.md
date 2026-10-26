@@ -13,24 +13,30 @@ however far the piston goes. This is the difference between an ideal gas
 and a saturated vapour, and the reason a cylinder gauge reads the vapour
 pressure, not the contents.
 
+The first and third screenshots predate the critical-temperature correction
+(model Tc 1.035, not 1.08), so their panels show the old temperatures and
+pressures. The captions give what the same states read as now.
+
 ![An unsaturated N2O vapour](../docs/n2o-vapour.png)
 
 *The default start, part-way through a slow compression: 5,000 spheres as a
-dilute vapour at −45.5 °C (as N₂O), still unsaturated. The trail follows the dashed
+dilute vapour at T/ε 0.794, −35.6 °C as N₂O (the panel shows −45.5 °C),
+still unsaturated. The trail follows the dashed
 ideal-gas isotherm.*
 
 ![The same after compression: saturated vapour over liquid](../docs/n2o-saturated.png)
 
 *After the piston has compressed it to a twelfth of its height: liquid has
-formed on the floor, and the dot is on the flat line at 7.7 bar, N₂O's vapour
-pressure at −45.5 °C, having run along it to 61 % liquid. The loop above
+formed on the floor, and the dot is on the flat line at 10.9 bar, N₂O's
+vapour pressure at −35.6 °C, having run along it to 54 % liquid. The loop above
 the dome is a supersaturated vapour: it ran past the saturation point while droplets nucleated, then dropped onto the line.*
 
-![At 20 °C: the cylinder's state](../docs/n2o-cylinder.png)
+![Near the critical point: liquid and vapour](../docs/n2o-cylinder.png)
 
-*At 20.1 °C (T/ε 1.023) and a higher packing fraction: liquid and vapour
-at 50.7 bar, as in a cylinder. Near the critical point (36.4 °C) the flat
-part of the isotherm is short and the liquid and vapour look much alike.*
+*At T/ε 1.023, now 32.9 °C (the panel shows 20.1 °C), and a higher packing
+fraction: liquid and vapour at 67 bar (the panel shows 50.7). This close to
+the critical point (36.4 °C) the flat part of the isotherm is short and the
+liquid and vapour look much alike. A cylinder at 20 °C is T/ε 0.98.*
 
 ## Build and run
 

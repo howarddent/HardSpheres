@@ -10,6 +10,16 @@ The sticky version in [`Sticky/`](Sticky/) adds attraction, binding and gravity:
 
 ![StickySpheres: a Lennard-Jones liquid wetting the floor under its vapour](docs/sticky-pool.png)
 
+### N2OPhase: nitrous oxide
+
+[`N2O/`](N2O/) (N2OPhase) is a teaching aid built on the sticky spheres. It maps them onto nitrous oxide by corresponding states and puts a red dot for the simulation's state on N₂O's P–V isotherm. Compress a vapour with the piston and the dot follows Boyle's law up to the vapour pressure; once liquid forms the pressure stops rising and the dot runs along the flat line. That is why a cylinder gauge reads the vapour pressure, not the contents.
+
+![N2OPhase: N2O vapour compressed until liquid forms, with the state on the P-V isotherm](docs/n2o-saturated.png)
+
+*5,000 spheres at T/ε 0.794 (−35.6 °C as N₂O), compressed to a twelfth of their height: liquid on the floor, saturated vapour above, and the dot on the flat line at 10.9 bar, N₂O's vapour pressure. The trail shows the compression run along the ideal-gas curve and overshoot slightly as supersaturated vapour before droplets formed.*
+
+The model's critical point was measured with 1,000,000 spheres: [`N2O/n2o_isotherms.png`](N2O/n2o_isotherms.png) shows its isotherms at 0 °C, 20 °C, the critical temperature and 100 °C against N₂O's measured dome. See the [N2O README](N2O/README.md).
+
 ## Build and run
 
 ```
@@ -70,4 +80,4 @@ Command line: `--n=`, `--phi=`, `--maxwell`, `--hold`, `--speed=`, `--compress=<
 
 ## Licence
 
-MIT; see [LICENSE](LICENSE). Covers `Sticky/` too.
+MIT; see [LICENSE](LICENSE). Covers `Sticky/` and `N2O/` too.

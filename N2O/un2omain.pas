@@ -1215,7 +1215,7 @@ begin
     end;
     L.Add('');
     L.Add(Format('Simulation: T/eps %.3f, pressure at the floor %.4f (walls'' mean %.4f; reduced units); '
-      + 'model critical temperature %.2f. Temperatures map by T/Tc, and '
+      + 'model critical temperature %.3f. Temperatures map by T/Tc, and '
       + 'while liquid is present the pressure is N2O''s vapour pressure at '
       + 'that temperature.', [Tr, Pm, FSim.Pressure / FSim.Eps, ModelTc]));
   finally
