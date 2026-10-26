@@ -147,12 +147,13 @@ function glXGetCurrentDisplay: Pointer; cdecl; external 'GL';
 const
   // the stepped Lennard-Jones model's own liquid-vapour coexistence, in
   // reduced units (T/eps, P sigma^3/eps), measured from the simulation:
-  // critical temperature and the vapour pressure ln P = A - B/T (README)
-  ModelTc = 1.08;
-  ModelPsatA = 3.0;
-  ModelPsatB = 5.74;
+  // critical temperature and the vapour pressure ln P = A - B/T + C ln T (README)
+  ModelTc = 1.035;
+  ModelPsatA = 0.550;
+  ModelPsatB = 3.193;
+  ModelPsatC = 3.363;
   // ... and its critical density (spheres per sigma^3), for volumes
-  ModelRhoC = 0.31;
+  ModelRhoC = 0.302;
   // liquid present: this fraction of the spheres in droplets (below)
   LiquidFraction = 0.03;
   // spheres in clusters of 2^LiquidBin or more count as liquid, the rest
@@ -162,7 +163,8 @@ const
 
 function ModelVapourPressure(Tr: Double): Double;
 begin
-  Result := Exp(ModelPsatA - ModelPsatB / Tr);
+  Tr := Max(Tr, 0.01);
+  Result := Exp(ModelPsatA - ModelPsatB / Tr + ModelPsatC * Ln(Tr));
 end;
 
 function ModelPc: Double;
@@ -385,7 +387,7 @@ begin
   y := y + 30;
 
   lblTemp := AddLabel('', y);
-  tbTemp := Track(y + 16, 200, 90, @TempChange);    // T 0.79: about -46 °C as N2O
+  tbTemp := Track(y + 16, 200, 90, @TempChange);    // T 0.79: about -37 °C as N2O
   y := y + 46;
   cbHold := AddCheck('hold T (thermostat)', y, True);
   cbHold.OnChange := @HoldChange;

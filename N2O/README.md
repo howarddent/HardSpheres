@@ -94,7 +94,7 @@ The spheres are a generic simple fluid (stepped Lennard-Jones), so they
 are mapped onto N₂O by **corresponding states**: the same reduced
 temperature T/Tc.
 
-- **Temperature:** T(N₂O) = (T/ε) × 309.52 K / 1.08, where 1.08 is the
+- **Temperature:** T(N₂O) = (T/ε) × 309.52 K / 1.035, where 1.035 is the
   model's own critical temperature. The temperature slider shows the
   result in °C.
 - **Pressure, liquid present** (3 % of the spheres or more in droplets of
@@ -111,7 +111,7 @@ temperature T/Tc.
 
 **Defaults here differ from StickySpheres:**
 - **packing fraction 0.003:** a dilute, unsaturated vapour to start with;
-- **T/ε 0.79:** about −46 °C as N₂O;
+- **T/ε 0.79:** about −37 °C as N₂O;
 - **gravity 0.005:** see below;
 - **capture off:** with capture on, the inelastic sticking binds far more
   vapour pairs than equilibrium would (38 % of the spheres against about
@@ -145,14 +145,20 @@ not in the repo):
   floor under weak gravity (g 0.002 and 0.02), from the lid's pressure
   corrected for the vapour's weight. They agree with the vapour density to
   about 5 % (the vapour is slightly non-ideal).
-- **Vapour pressure fit:** ln P = 3.0 − 5.74/T.
+- **Vapour pressure fit:** ln P = 0.550 − 3.193/T + 3.363 ln T, through these
+  points and the coexistence runs near Tc below (within 4.4 % of all of them).
 - **How the liquid densities were measured:** from a flat liquid slab on the
   wetting floor at g 0.02, over the middle of the floor.
-- **Critical point:** fitting (ρl − ρv)^(1/0.325) linear in T gives
-  Tc = 1.08 and a critical density of 0.31. That makes Pc ≈ 0.095 and
-  Pc/(ρc Tc) ≈ 0.29, close to real fluids (N₂O 0.274).
+- **Critical point:** Tc = 1.035, critical density 0.302, Pc ≈ 0.089, so
+  Pc/(ρc Tc) ≈ 0.28, close to real fluids (N₂O 0.274). The coexisting
+  densities came from 200k spheres at density 0.31 without gravity or a
+  wetting floor, from whole-box histograms of cube densities, at T/ε 0.913
+  to 1.02; (ρl − ρv)^(1/0.325) is linear in T to Tc. A 1M-sphere isotherm
+  at T/ε 1.035 is flat around the critical density, at P 0.088. (An
+  earlier fit gave 1.08 from the slab densities above, which the wetting
+  floor biased; see `plot.py` and `data/`.)
 - **Cross-check:** in the program, the vapour over the liquid at T/ε 0.794
-  measures 0.0148 at the floor, against 0.0146 from the fit. The dot would
+  measures 0.0148 at the floor, against 0.0143 from the fit. The dot would
   sit on the flat line even without being put there.
 
 **Limits.** A one-parameter mapping (T/Tc) can't reproduce every property
