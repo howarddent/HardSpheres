@@ -20,6 +20,12 @@ The sticky version in [`Sticky/`](Sticky/) adds attraction, binding and gravity:
 
 The model's critical point was measured with 1,000,000 spheres: [`N2O/n2o_isotherms.png`](N2O/n2o_isotherms.png) shows its isotherms at 0 °C, 20 °C, the critical temperature and 100 °C against N₂O's measured dome. See the [N2O README](N2O/README.md).
 
+### Isotherms: ideal and real gases
+
+[`Isotherms/`](Isotherms/) joins the two in one program. Choose the substance from a dropdown (nitrous oxide, carbon dioxide or water), and switch the intermolecular attraction on for a real gas that condenses, or off for an ideal gas that follows PV = RT straight through the liquid–vapour dome. See the [Isotherms README](Isotherms/README.md).
+
+![Isotherms: water vapour at 223 °C on the P-V isotherm](docs/isotherms-water.png)
+
 ## Build and run
 
 ```
@@ -76,8 +82,9 @@ Command line: `--n=`, `--phi=`, `--maxwell`, `--hold`, `--speed=`, `--compress=<
 
 - Non-ideal gas with attraction: done as a square well in `Sticky/` (StickySpheres), with binding, inelastic capture, breaking, clusters and condensation. See its README.
 - Teaching: `N2O/` (N2OPhase) puts the liquid–vapour simulation beside the P–V isotherm of nitrous oxide, with a red dot for the simulation's state. See its README.
+- Teaching: `Isotherms/` combines the two, with a choice of N₂O, CO₂ or water and the attraction on (real gas) or off (ideal gas). See its README.
 - A counting-sort cell list in place of fixed-capacity cells, so memory follows N rather than the box volume.
 
 ## Licence
 
-MIT; see [LICENSE](LICENSE). Covers `Sticky/` and `N2O/` too.
+MIT; see [LICENSE](LICENSE). Covers `Sticky/`, `N2O/` and `Isotherms/` too.

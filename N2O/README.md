@@ -175,3 +175,23 @@ changes each sphere's momentum when it crosses into or out of the floor's
 well. Those changes now count in the wall impulse. Without them, a
 populated well made the floor's pressure read many times too high (0.17
 against a true 0.015). Energy and the dynamics are unchanged.
+
+## Simulation drivers
+
+`drivers/` holds the command-line programs that produced `data/`. Build them
+with `drivers/build.sh` (Free Pascal; they use `../Sticky/ustickysim.pas`).
+They write their CSV files to the current folder and skip points already
+there, so run them from `data/` to extend it, or from an empty folder to
+start again. Runs take hours on an RTX 5070 Laptop GPU; use `prime-run` on
+a hybrid-graphics laptop.
+
+- `iso2`: the 1M-sphere isotherms at 0, 20, 36 (Tc) and 100 °C, to `iso2.csv`.
+- `iso3`: the liquid and near-critical points again, equilibrated longer,
+  with the interior density, to `iso3.csv`.
+- `coex T* ...`: 200k spheres at density 0.31: the vapour pressure, Binder
+  cumulants and the cube-density histograms, to `coex.csv` and
+  `histall_<T>.csv`.
+- `bench`: how long 10 time units of 1M spheres take.
+
+The earlier floor-and-slab runs behind the low-temperature table above are
+not included.
