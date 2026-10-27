@@ -8,7 +8,7 @@ HardSpheres, the folder above, and shares its `clgl.pas`.
 
 ![A Lennard-Jones liquid wetting the floor under its vapour](../docs/sticky-pool.png)
 
-*The default settings (5,000 spheres, stepped Lennard-Jones, T = 0.71, gravity 0.05, floor attraction 1.5, capture on) after 150 time units: the liquid has wet the floor (tinted blue) and covers it, about five layers deep, under a thin vapour. Colour shows bonds per sphere (grey-blue free, green to red more bonds); bonds are drawn as lines. Speeds follow Maxwell–Boltzmann, and the clusters histogram shows one cluster holding almost every sphere.*
+*The default settings (5,000 spheres, stepped Lennard-Jones, T = 0.71, gravity 0.05, floor attraction 1.5) after 150 time units: the liquid has wet the floor (tinted blue) and covers it, about five layers deep, under a thin vapour. Colour shows bonds per sphere (grey-blue free, green to red more bonds); bonds are drawn as lines. Speeds follow Maxwell–Boltzmann, and the clusters histogram shows one cluster holding almost every sphere.*
 
 ![A thinner liquid film at packing fraction 0.02](../docs/sticky-film.png)
 
@@ -34,7 +34,7 @@ As in HardSpheres, OpenCL won't run on an integrated GPU (it may be driving the 
 GUI options:
 
 - **Setup:** `--n`, `--phi`, `--lambda=<w>` (square well of width w, else stepped LJ), `--eps`, `--g`, `--floor=<eps_f>` (the floor's attraction, default 1.5; 0 for a hard floor), `--temp`, `--maxwell`.
-- **Behaviour:** `--nocapture`, `--nohold`.
+- **Behaviour:** `--nohold`.
 - **Snapshot:** `--snapshot=<file.png>` with `--frames=<n>` saves the view and the window, prints the readouts and exits.
 
 ## The model
@@ -68,17 +68,30 @@ potential energy.
 | event | what happens |
 |---|---|
 | core (r = 1) | elastic bounce |
-| a step inward (including reaching the cutoff) | **Capture on**, one of the pair free (no bonds), the step downhill and u_n²/4 < ε: the pair steps in without speeding up and the step's energy is given off (inelastic). Otherwise, if u_n²/4 > ΔU, it steps in and u_n²/4 changes by −ΔU; if not, it bounces back |
+| a step inward (including reaching the cutoff) | if u_n²/4 > ΔU, it steps in and u_n²/4 changes by −ΔU; if not, it bounces back |
 | a step outward | if u_n²/4 > ΔU it steps out (beyond the cutoff, the pair leaves the lists); otherwise it bounces back |
 
-**Capture on** is the "slow pairs stick" rule. A pair that falls in slowly
-gives off each step's energy on the way down and ends up deep in the
-well. It can only climb out again with energy from collisions. Every
-capture cools the gas, and "hold T" (the thermostat) puts the energy
-back.
+Every collision conserves energy: KE + PE_gravity + PE_pairs is constant.
+A pair that falls into the well speeds up and leaves again, unless a third
+sphere carries the energy away. Below the critical temperature the gas
+condenses into liquid in equilibrium with its vapour, and the speeds stay
+Maxwell–Boltzmann.
 
-Capture stands in for the third body that would carry a gas pair's
-energy away, so it applies only when one of the pair is free (has no
+**Capture (taken out of the program).** An earlier version had an
+inelastic "slow pairs stick" option, on by default: on a downhill step
+inward, a pair with less than ε of relative energy along its line of
+centres gave the step's energy off instead of speeding up, and ended up
+deep in the well. The thermostat put the energy back. It was taken out
+because it breaks detailed balance: it bound far more vapour pairs than
+equilibrium does (38 % of the spheres against about 16 % in N2OPhase) and
+pulled the vapour's PV/NT down to 0.62 against about 0.95. Without it the
+default settings still condense into the same wetting film within 150 time
+units. The code is still in `ustickysim.pas` and `sticky.cl` (the
+`Capture` property, off by default), and `stickycheck` still exercises it.
+What was learned along the way:
+
+Capture stood in for the third body that would carry a gas pair's
+energy away, so it applied only when one of the pair was free (had no
 bonds): condensation from the gas. Inside a cluster the neighbours carry
 energy away by ordinary collisions. At first capture applied everywhere,
 and the liquid, its bound pairs rattling across the narrow shells,
@@ -92,12 +105,6 @@ settles into a puddle. A heat bath that redraws random spheres'
 velocities (Andersen) was tried as well. It warms the liquid locally but
 also acts as a drag on every cluster's motion, so droplets fell at only
 about g/rate and the pool barely spread; it was dropped.
-
-**Capture off** is the energy-conserving fluid: KE + PE_gravity + PE_pairs
-is constant. A pair that falls into the well speeds up and leaves again,
-unless a third sphere carries the energy away. Below the critical
-temperature the gas condenses into liquid in equilibrium with its
-vapour, and the speeds stay Maxwell–Boltzmann.
 
 **Gravity** g (slider, 0 to 0.2, default 0.05) pulls along −z, down the
 screen, so a condensate settles on the floor. The move step integrates it
@@ -160,9 +167,7 @@ added:
   spheres across the box.
 
 **Speed** (RTX 5070, 10,000 spheres, condensed at T 0.71): about 62
-frames/s with capture off and 67 with capture on (32 before capture was
-limited to gas pairs, when the frozen clusters kept the sweeps at their
-cap), against about 165 for the square well. The default is 5,000 spheres.
+frames/s, against about 165 for the square well. The default is 5,000 spheres.
 
 ## Checks (`stickycheck`, N = 20000, about 2¼ min)
 
@@ -181,7 +186,7 @@ cap), against about 165 for the square well. The default is 5,000 spheres.
 The neighbour counts run 2–3 % low because spheres near the walls have
 fewer neighbours. In the GUI the books balance:
 
-KE + PE_gravity + PE_pairs = start − energy given off + thermostat work
+KE + PE_gravity + PE_pairs = start + thermostat work
 
 The readout shows each term, the sweeps per substep, and how far any pair
 is outside its shell, flagged if events are being missed.
@@ -191,8 +196,7 @@ is outside its shell, flagged if events are being missed.
 - **T about 0.6–0.85, gravity on (default 0.71):** droplets rain onto
   the floor and spread into a liquid film (on a hard floor, a puddle)
   under a thin vapour, with
-  Maxwell–Boltzmann speeds, capture on or off. Capture speeds up the
-  early condensation. With g = 0 the droplets grow and merge into one
+  Maxwell–Boltzmann speeds. With g = 0 the droplets grow and merge into one
   drop. Heat it and the liquid evaporates.
 - **T about 1:** close to the critical point of this short-ranged
   (2σ cutoff) potential: a diffuse dense layer on the floor, not a

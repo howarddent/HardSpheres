@@ -80,7 +80,7 @@ Command line: `--n=`, `--phi=`, `--maxwell`, `--hold`, `--speed=`, `--compress=<
 
 ## Next
 
-- Non-ideal gas with attraction: done as a square well in `Sticky/` (StickySpheres), with binding, inelastic capture, breaking, clusters and condensation. See its README.
+- Non-ideal gas with attraction: done in `Sticky/` (StickySpheres), stepped Lennard-Jones or a square well, with binding, breaking, clusters and condensation. See its README.
 - Teaching: `N2O/` (N2OPhase) puts the liquid–vapour simulation beside the P–V isotherm of nitrous oxide, with a red dot for the simulation's state. See its README.
 - Teaching: `Isotherms/` combines the two, with a choice of N₂O, CO₂ or water and the attraction on (real gas) or off (ideal gas). See its README.
 - A counting-sort cell list in place of fixed-capacity cells, so memory follows N rather than the box volume.

@@ -16,13 +16,8 @@ unit ustickymain;
       Lennard-Jones, cutoff 2, or a square well of a chosen width), equal or Maxwell-Boltzmann starting
       speeds, Reset, Pause;
     temperature and "hold T" (a thermostat);
-    the well depth eps, and "capture": on each downhill step inward a slow
-      pair (less than eps of relative energy along its line of centres)
-      gives the step's energy off instead of speeding up - an inelastic
-      collision, so slow pairs stick; only when one of the pair is free
-      (condensation from the gas: in a cluster the neighbours take the
-      energy). Unticked, the fluid conserves energy
-      and pairs bind only when a third sphere carries the energy away;
+    the well depth eps; collisions conserve energy, so pairs bind only
+      when a third sphere carries the energy away;
     gravity g, along -z (down the screen), which pulls a condensate to
       the floor and gives the gas a barometric profile, scale height T/g;
     the floor's attraction eps_f, a well one diameter deep above it:
@@ -31,13 +26,13 @@ unit ustickymain;
       puddle);
     piston position and speed: the piston is the top face, so only the
       box's height changes with its volume.
-  Readouts: T, V, bonds and energies, the rates of collisions, bonding,
-  capture and breaking, the clusters, and the pressure against the
+  Readouts: T, V, bonds and energies, the rates of collisions, bonding
+  and breaking, the clusters, and the pressure against the
   square-well virial estimate; below them the cluster-size distribution
   and the speed distribution.
 
-  Command line: --n, --phi, --lambda, --eps, --g, --floor, --temp, --nocapture,
-  --nohold, --maxwell, --snapshot=<file.png> (after --frames=<n>, default
+  Command line: --n, --phi, --lambda, --eps, --g, --floor, --temp, --nohold,
+  --maxwell, --snapshot=<file.png> (after --frames=<n>, default
   200, saves the view and window and prints the readouts).
 *******************************************************************************}
 
@@ -62,7 +57,7 @@ type
     FPanel: TPanel;
     cbN, cbColour, cbPot: TComboBox;
     sePhi, seLambda: TFloatSpinEdit;
-    cbMaxwell, cbHold, cbCapture, cbShowBonds: TCheckBox;
+    cbMaxwell, cbHold, cbShowBonds: TCheckBox;
     btnReset, btnPause: TButton;
     tbTemp, tbEps, tbGrav, tbFloor, tbPiston, tbSpeed: TTrackBar;
     lblTemp, lblEps, lblGrav, lblFloor, lblPiston, lblSpeed: TLabel;
@@ -112,7 +107,6 @@ type
     procedure EpsChange(Sender: TObject);
     procedure GravChange(Sender: TObject);
     procedure FloorChange(Sender: TObject);
-    procedure CaptureChange(Sender: TObject);
     procedure PistonChange(Sender: TObject);
     procedure SpeedChange(Sender: TObject);
     procedure HoldChange(Sender: TObject);
@@ -214,7 +208,6 @@ begin
   if Application.HasOption('temp') then
     tbTemp.Position := Round(100 + 100 * Log10(StrToFloatDef(Application.GetOptionValue('temp'), 1)));
   if Application.HasOption('maxwell') then cbMaxwell.Checked := True;
-  if Application.HasOption('nocapture') then cbCapture.Checked := False;
   if Application.HasOption('nohold') then cbHold.Checked := False;
   FSim := TStickySim.Create;
   FSim.AllowIntegrated := Application.HasOption('allow-igpu');
@@ -333,9 +326,6 @@ begin
   lblEps := AddLabel('', y);
   tbEps := Track(y + 16, 200, 50, @EpsChange);
   y := y + 46;
-  cbCapture := AddCheck('capture: slow pairs stick, giving off energy (inelastic)', y, True);
-  cbCapture.OnChange := @CaptureChange;
-  y := y + 26;
   lblGrav := AddLabel('', y);
   tbGrav := Track(y + 16, 200, 50, @GravChange);
   y := y + 46;
@@ -470,11 +460,6 @@ begin
   if FSim <> nil then FSim.Gravity := SliderGrav;
 end;
 
-procedure TfmMain.CaptureChange(Sender: TObject);
-begin
-  if FSim <> nil then FSim.Capture := cbCapture.Checked;
-end;
-
 procedure TfmMain.HoldChange(Sender: TObject);
 begin
   if FSimReady then
@@ -573,7 +558,7 @@ begin
   FSim.Eps := SliderEps;
   FSim.Gravity := SliderGrav;
   FSim.FloorEps := SliderFloor;
-  FSim.Capture := cbCapture.Checked;
+  FSim.Capture := False;
   if cbPot.ItemIndex = 1 then
     FSim.Setup(n, sePhi.Value, SliderTemp, SquareWellPotential(seLambda.Value), not cbMaxwell.Checked, FVBO)
   else
@@ -937,11 +922,11 @@ begin
       [FSim.KineticEnergy / n, FSim.PotentialEnergy / n, FSim.PairEnergy / n]));
     if FSim.FloorEps > 0 then
       L.Add(Format('  floor %.4f (%.0f spheres in its well)', [FSim.FloorEnergy / n, -FSim.FloorEnergy / FSim.FloorEps]));
-    L.Add(Format('  total %.4f; given off %.4f,', [FSim.Energy / n, FSim.Radiated / n]));
+    L.Add(Format('  total %.4f,', [FSim.Energy / n]));
     L.Add(Format('  thermostat added %.4f', [FSim.ThermostatWork / n]));
     L.Add('per sphere per unit time:');
     L.Add(Format('  core collisions %.4g', [2 * FSim.CoreRate]));
-    L.Add(Format('  bonds formed %.4g (captured %.4g)', [2 * FSim.FormRate, 2 * FSim.CaptureRate]));
+    L.Add(Format('  bonds formed %.4g', [2 * FSim.FormRate]));
     L.Add(Format('  bonds broken %.4g', [2 * FSim.BreakRate]));
     if FHaveClusters then
     begin
@@ -955,10 +940,7 @@ begin
     if FSim.Gravity > 0 then
       L.Add('  (in gravity P varies with height)')
     else
-    begin
       L.Add(Format('PV/NT %.4f   1 + B2 rho %.4f', [P / (rho * T), 1 + SecondVirial(FSim.Potential, FSim.Eps, T) * rho]));
-      if FSim.Capture then L.Add('  (the virial estimate is for equilibrium, capture off)');
-    end;
     if FSim.Overflows > 0 then
       L.Add(Format('WARNING: %d cell overflows (too dense)', [FSim.Overflows]));
   finally

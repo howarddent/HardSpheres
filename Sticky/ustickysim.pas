@@ -257,7 +257,7 @@ begin
   TargetT := 1;
   PressureFrames := 20;
   Eps := 1;
-  Capture := True;
+  Capture := False;
   FloorRange := 1;
   FPot := LennardJonesPotential;
 end;

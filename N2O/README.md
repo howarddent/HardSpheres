@@ -16,20 +16,20 @@ pressure, not the contents.
 ![An unsaturated N2O vapour](../docs/n2o-vapour.png)
 
 *The default start, part-way through a slow compression: 5,000 spheres as a
-dilute vapour at T/ε 0.794, −35.6 °C as N₂O, at 7.2 bar and still
-unsaturated (PV/RT = 0.96). The trail follows the dashed ideal-gas isotherm.*
+dilute vapour at T/ε 0.794, −35.6 °C as N₂O, at 6.6 bar and still
+unsaturated (PV/RT = 0.87). The trail follows the dashed ideal-gas isotherm, dropping a little below it as the vapour nears saturation.*
 
 ![The same after compression: saturated vapour over liquid](../docs/n2o-saturated.png)
 
 *After the piston has compressed it to a twelfth of its height: liquid has
 formed on the floor, and the dot is on the flat line at 10.9 bar, N₂O's
-vapour pressure at −35.6 °C, having run along it to 54 % liquid. The loop above
+vapour pressure at −35.6 °C, having run along it to 57 % liquid. The loop above
 the dome is a supersaturated vapour: it ran past the saturation point while droplets nucleated, then dropped onto the line.*
 
 ![At 19 °C: the cylinder's state](../docs/n2o-cylinder.png)
 
 *At 19.1 °C (T/ε 0.977) and a higher packing fraction (0.08): liquid and
-vapour at 49.5 bar, 69 % liquid, as in a cylinder. Near the critical point
+vapour at 49.5 bar, 70 % liquid, as in a cylinder. Near the critical point
 (36.4 °C) the flat part of the isotherm is short and the liquid and vapour
 look much alike.*
 
@@ -43,8 +43,8 @@ lazbuild --ws=gtk2 N2OPhase.lpi
 It uses the simulation in `../Sticky` (`ustickysim.pas`, and `sticky.cl`,
 found there at run time) and `../clgl.pas`, so build Sticky's sources as they
 are; nothing is copied. Options are those of StickySpheres plus
-`--compress=<f>` (after 100 frames move the lid to f times its height),
-`--speed=<piston speed>` and `--capture` (off by default here).
+`--compress=<f>` (after 100 frames move the lid to f times its height)
+and `--speed=<piston speed>`.
 Like them, it won't run OpenCL on an integrated GPU unless given `--allow-igpu`.
 `--snapshot` also prints the text under the diagram.
 
@@ -114,11 +114,14 @@ temperature T/Tc.
 - **packing fraction 0.003:** a dilute, unsaturated vapour to start with;
 - **T/ε 0.79:** about −37 °C as N₂O;
 - **gravity 0.005:** see below;
-- **capture off:** with capture on, the inelastic sticking binds far more
-  vapour pairs than equilibrium would (38 % of the spheres against about
-  16 %), and the vapour's PV/RT came out 0.62 instead of about 0.95;
 - **piston speed 0.3:** slow enough for the vapour to keep near
   equilibrium as it is compressed.
+
+**No capture.** An earlier version had StickySpheres' inelastic capture
+option (off by default here). With it on, the sticking bound far more
+vapour pairs than equilibrium would (38 % of the spheres against about
+16 %), and the vapour's PV/RT came out 0.62 instead of about 0.95. It has
+since been taken out of both programs.
 
 **Which pressure.** In gravity a vapour thins with height, and it first
 saturates at the floor. So the vapour's pressure is the floor's,
