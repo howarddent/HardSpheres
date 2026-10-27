@@ -653,7 +653,6 @@ begin
   FSim.Eps := Eps;
   FSim.Gravity := SliderGrav;
   FSim.FloorEps := SliderFloor * Eps;
-  FSim.Capture := False;
   FSim.Setup(n, sePhi.Value, SliderTemp, LennardJonesPotential, not cbMaxwell.Checked, FVBO);
   if not FSim.Shared then
     glBufferSubData(GL_ARRAY_BUFFER, 0, 16 * n, @FSim.HostPos[0]);

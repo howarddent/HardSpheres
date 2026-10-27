@@ -629,7 +629,6 @@ begin
   FSim.Eps := SliderEps;
   FSim.Gravity := SliderGrav;
   FSim.FloorEps := SliderFloor;
-  FSim.Capture := False;
   if cbPot.ItemIndex = 1 then
     FSim.Setup(n, sePhi.Value, SliderTemp, SquareWellPotential(seLambda.Value), not cbMaxwell.Checked, FVBO)
   else

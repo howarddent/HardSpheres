@@ -73,7 +73,7 @@ begin
   S := TStickySim.Create;
   S.InitCL(ExtractFilePath(ParamStr(0)) + '../../Sticky/sticky.cl', nil, nil);
   WriteLn('OpenCL on ', S.DeviceName, ', ', Length(Pts), ' points, ', Done.Count, ' done');
-  S.Eps := 1; S.Gravity := 0; S.FloorEps := 0; S.Capture := False; S.Thermostat := True;
+  S.Eps := 1; S.Gravity := 0; S.FloorEps := 0; S.Thermostat := True;
   S.SimTimePerFrame := 0.1;
   for i := 0 to High(Pts) do
   begin

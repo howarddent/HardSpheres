@@ -21,14 +21,9 @@
 
     core     r reaches 1 (shell 0), approaching: elastic bounce
     inward   r reaches R[s] from shell s (s > 0), or the cutoff R[K]
-             from outside (the pair joins the lists), approaching:
-               capture on, one of the pair free (no bonds), the step
-               downhill (dU < 0) and u_n^2/4 < eps:
-                 the pair steps in with u_n unchanged and -dU is given off
-                 (inelastic: a slow pair falls into the well and sticks);
-               otherwise, if u_n^2/4 > dU, it steps in, u_n^2/4 changing
-                 by -dU; if not (an uphill step it can't climb), it
-                 bounces back
+             from outside (the pair joins the lists), approaching: if
+             u_n^2/4 > dU, it steps in, u_n^2/4 changing by -dU; if not
+             (an uphill step it can't climb), it bounces back
     outward  r reaches R[s+1] from shell s, separating: if u_n^2/4 > dU it
              steps out (beyond the cutoff: leaves the lists), otherwise
              bounces back
@@ -333,14 +328,13 @@ __kernel void fill(__global int* a, const int n, const int v)
 }
 
 // mutual picks happen. cnt: [0] core bounces, [1] bonds formed (steps in
-// across R[BondEdge]), [2] bonds broken, [3] captures, [4 + b] captures at
-// boundary R[b] (for the energy given off); each pair counted once
+// across R[BondEdge]), [2] bonds broken; each pair counted once
 __kernel void apply(__global const float4* pos, __global const float4* vin,
                     __global float4* vout, __global float4* corr, const int n,
                     __global const int* partner, __global const int* ptype,
                     __global int* nbr, __global int* shl, __global int* nn,
                     __global const float* R, __global const float* U, const int K,
-                    const int bondEdge, const float eps, const int capture,
+                    const int bondEdge, const float eps,
                     const float taumax, __global int* cnt)
 {
     int i = get_global_id(0);
@@ -386,19 +380,7 @@ __kernel void apply(__global const float4* pos, __global const float4* vin,
             float uold = (s < K) ? U[s] : 0.0f;
             float unw = (snew < K) ? U[snew] : 0.0f;
             float dU = eps * (unw - uold);
-            // capture stands in for the third body that carries a gas
-            // pair's energy away, so it applies only when one of the two
-            // is free (no bonds as of this substep's move: pos.w < 1). In
-            // a cluster the neighbours do that by ordinary collisions;
-            // capturing there too drained the liquid's heat (the
-            // thermostat's uniform rescaling put it into the vapour) and
-            // froze the liquid solid
-            int gas = pos[i].w < 1.0f || pos[j].w < 1.0f;
-            if (type != EV_OUT && capture && gas && dU < 0.0f && 0.25f * un2 < eps) {
-                unew = un;                    // steps in, giving off -dU
-                moved = 1;
-                if (first) { atomic_inc(&cnt[3]); atomic_inc(&cnt[4 + b]); }
-            } else if (0.25f * un2 > dU) {
+            if (0.25f * un2 > dU) {
                 float w = sqrt(max(un2 - 4.0f * dU, 0.0f));
                 unew = (type == EV_OUT) ? w : -w;
                 moved = 1;

@@ -22,11 +22,10 @@ unit ustickysim;
   square well, 1.5 sigma for Lennard-Jones - the Stillinger criterion):
   bonds are counted, coloured, drawn and make the clusters.
 
-  Capture on: on a downhill step inward a pair with less than Eps of
-  relative kinetic energy along the line of centres steps in without
-  speeding up, and the step's energy is given off (inelastic; Radiated).
-  Capture off: energy-conserving, E = KE + PE_gravity + PE_pairs constant.
-  Either way a pair climbs out of the well only with the energy to do so.
+  Every event conserves energy: E = KE + PE_gravity + PE_pairs is constant
+  (without the thermostat or piston). A pair climbs out of the well only
+  with the energy to do so, and binds only when a third sphere carries
+  energy away.
 
   The box and thermostat are those of HardSpheres, but the piston is the
   top face (z = Lz): only Lz changes with the volume, the floor and side
@@ -85,10 +84,10 @@ type
     FT0: Double;
     FTime: Double;
     FTemp, FKE, FPE, FPairPE, FFloorPE, FPress, FPistonPress: Double;
-    FRates: array[0..3] of Double;      // core, formed, broken, captured per sphere per unit time
-    FTotals: array[0..3] of Int64;
+    FRates: array[0..2] of Double;      // core, formed, broken per sphere per unit time
+    FTotals: array[0..2] of Int64;
     FBondCount: Integer;
-    FRadiated, FThermostatWork: Double;
+    FThermostatWork: Double;
     FHaveStats: Boolean;
     FOverflowCount: LongInt;
     FSubsteps: Integer;
@@ -113,7 +112,6 @@ type
     // the floor's attraction: a well of depth FloorEps for centres within
     // FloorRange of touching the floor, so a liquid can wet it
     FloorEps, FloorRange: Double;
-    Capture: Boolean;             // slow pairs stick, giving off the step energy
     StepFrac: Double;
     // run on an integrated GPU (memory shared with the CPU). Off by
     // default: on a laptop that GPU drives the display, and a long kernel
@@ -144,7 +142,7 @@ type
     function MaxOvershoot(const Nbr, Shells: array of LongInt; const P: array of Single): Double;
     function Volume: Double;
     function PackingFraction: Double;
-    // KE + PE (gravity) + pair energy: constant with capture off and no thermostat or piston
+    // KE + PE (gravity) + pair energy: constant without the thermostat or piston
     function Energy: Double;
     property Potential: TStepPotential read FPot;
     property Count: Integer read FN;
@@ -164,12 +162,9 @@ type
     property CoreRate: Double index 0 read GetRate;
     property FormRate: Double index 1 read GetRate;
     property BreakRate: Double index 2 read GetRate;
-    property CaptureRate: Double index 3 read GetRate;
     property CoreTotal: Int64 index 0 read GetTotal;
     property FormTotal: Int64 index 1 read GetTotal;
     property BreakTotal: Int64 index 2 read GetTotal;
-    property CaptureTotal: Int64 index 3 read GetTotal;
-    property Radiated: Double read FRadiated;
     property ThermostatWork: Double read FThermostatWork;
     property Overflows: LongInt read FOverflowCount;
     property CellSize: Single read FCellSize;
@@ -257,7 +252,6 @@ begin
   TargetT := 1;
   PressureFrames := 20;
   Eps := 1;
-  Capture := False;
   FloorRange := 1;
   FPot := LennardJonesPotential;
 end;
@@ -521,9 +515,8 @@ begin
   FPE := 0;
   FFloorPE := 0;
   FPairPE := 0;
-  FRadiated := 0;
   FThermostatWork := 0;
-  for k := 0 to 3 do
+  for k := 0 to 2 do
   begin
     FRates[k] := 0;
     FTotals[k] := 0;
@@ -629,7 +622,7 @@ begin
   FillChar(Zero, SizeOf(Zero), 0);
   FOverflow := Buf(4, 'overflow');
   CheckCL(clEnqueueWriteBuffer(FQueue, FOverflow, CL_TRUE, 0, 4, @Zero, 0, nil, nil), 'write');
-  FCnt := Buf(4 * (4 + MaxShells + 1), 'counters');
+  FCnt := Buf(4 * 3, 'counters');
   FPending := Buf(4, 'pending');
   FActA := Buf(4 * N, 'active');
   FActB := Buf(4 * N, 'active');
@@ -666,18 +659,14 @@ end;
 procedure TStickySim.Frame;
 var
   vchar, dt, W, imp, impP, ke, ends, sz, pe, ax, ay, az, tf, alpha, x, umin, nw: Double;
-  sub, sw, i, n, b, nsw: Integer;
+  sub, sw, i, n, nsw: Integer;
   pend, one, zero1: LongInt;
   Lv: array[0..3] of Single;
   dtS, WS, rS, ics, epsS, vsS, tmS, gS, efS, zwS: Single;
-  capS, KS, beS: LongInt;
-  Zero: array[0..4 + MaxShells] of LongInt;
-  nc: array[0..4 + MaxShells] of LongInt;
+  KS, beS: LongInt;
+  Zero: array[0..2] of LongInt;
+  nc: array[0..2] of LongInt;
   tmp: cl_mem;
-  function Level(s: Integer): Double;     // shell energy, 0 outside
-  begin
-    if s < FPot.K then Result := FPot.U[s] else Result := 0;
-  end;
 begin
   n := FN;
   tf := SimTimePerFrame;
@@ -700,7 +689,6 @@ begin
   rS := 0.5;
   ics := 1 / FCellSize;
   epsS := Max(Eps, 0);
-  if Capture then capS := 1 else capS := 0;
   vsS := 2.2 * Sqrt(3 * Max(FTemp, 1e-6));
   tmS := 2 * dt;
   gS := Max(Gravity, 0);
@@ -815,9 +803,8 @@ begin
       Arg(KApply, 12, 4, @KS);
       Arg(KApply, 13, 4, @beS);
       Arg(KApply, 14, 4, @epsS);
-      Arg(KApply, 15, 4, @capS);
-      Arg(KApply, 16, 4, @tmS);
-      Arg(KApply, 17, SizeOf(cl_mem), @FCnt);
+      Arg(KApply, 15, 4, @tmS);
+      Arg(KApply, 16, SizeOf(cl_mem), @FCnt);
       Enqueue(KApply, FN);
       tmp := FVelA; FVelA := FVelB; FVelB := tmp;
     end;
@@ -853,17 +840,14 @@ begin
   FPE := Max(Gravity, 0) * (sz / FSubsteps - 0.5 * FN);
   FPairPE := pe / FSubsteps;
   FFloorPE := -Max(FloorEps, 0) * nw / FSubsteps;
-  for i := 0 to 3 do FTotals[i] := FTotals[i] + nc[i];
-  // a capture at boundary b gives off the step there
-  for b := 1 to FPot.K do
-    FRadiated := FRadiated + nc[4 + b] * Max(Eps, 0) * (Level(b) - Level(b - 1));
+  for i := 0 to 2 do FTotals[i] := FTotals[i] + nc[i];
   ax := FLx - 1; ay := FLy - 1; az := FLz - 1;
   if FHaveStats then alpha := 1 / Max(1, PressureFrames) else alpha := 1;
   x := imp / (2 * (ay * az + ax * az + ax * ay) * tf);
   FPress := FPress + alpha * (x - FPress);
   x := impP / (ax * ay * tf);
   FPistonPress := FPistonPress + alpha * (x - FPistonPress);
-  for i := 0 to 3 do
+  for i := 0 to 2 do
   begin
     x := nc[i] / (FN * tf);
     FRates[i] := FRates[i] + alpha * (x - FRates[i]);

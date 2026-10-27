@@ -34,7 +34,7 @@ begin
   Randomize;
   S := TStickySim.Create;
   S.InitCL(ExtractFilePath(ParamStr(0)) + '../../Sticky/sticky.cl', nil, nil);
-  S.Eps := 1; S.Gravity := 0; S.FloorEps := 0; S.Capture := False; S.Thermostat := True;
+  S.Eps := 1; S.Gravity := 0; S.FloorEps := 0; S.Thermostat := True;
   S.SimTimePerFrame := 0.1;
   SetLength(Pos, 4 * N);
   for a := 1 to ParamCount do

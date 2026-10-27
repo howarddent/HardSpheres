@@ -6,16 +6,16 @@ program stickycheck;
   Lennard-Jones, cutoff 2.
 
   1. Eps = 0: plain hard spheres; PV/NT against Carnahan-Starling.
-  2. Capture off, no thermostat: KE + PE_gravity + pair energy constant
+  2. No thermostat: KE + PE_gravity + pair energy constant
      (SW, LJ, LJ in gravity, and with the floor's attraction).
-  3. Capture off, thermostat, low density, equilibrated: pairs per sphere
+  3. Thermostat, low density, equilibrated: pairs per sphere
      within the cutoff and within 1.5 (the bonds) against the Boltzmann
      counts rho sum_s e^(-Eps U_s/T) (4 pi/3)(R_s+1^3 - R_s^3) (a little
      high: spheres near the walls have fewer neighbours), and PV/NT
      against 1 + B2 rho for the stepped potential.
   4. Gravity, Eps = 0: the mean height against the barometric profile,
      ideal and with the hard-sphere (Carnahan-Starling) pressure.
-  5. Capture on, thermostat: bonding, capture and breaking, the clusters,
+  5. Thermostat: bonding and breaking, the clusters,
      and the largest distance any listed pair is outside its shell (a
      health check: events missed).
 
@@ -41,11 +41,10 @@ begin
   for f := 1 to Frames do S.Frame;
 end;
 
-procedure Configure(Eps, G: Double; Capture, Hold: Boolean);
+procedure Configure(Eps, G: Double; Hold: Boolean);
 begin
   S.Eps := Eps;
   S.Gravity := G;
-  S.Capture := Capture;
   S.Thermostat := Hold;
 end;
 
@@ -54,7 +53,7 @@ var
   T, P, rho: Double;
   f: Integer;
 begin
-  Configure(0, 0, False, False);
+  Configure(0, 0, False);
   S.Setup(N, Phi, 1.0, SW, False, 0);
   S.PressureFrames := 1;
   Run(200);
@@ -74,7 +73,7 @@ var
   E0, Emin, Emax: Double;
   f: Integer;
 begin
-  Configure(1, G, False, False);
+  Configure(1, G, False);
   S.FloorEps := EF;
   S.Setup(N, Phi, T0, Pot, False, 0);
   S.Frame;
@@ -95,7 +94,7 @@ var
   P, rho, nAll, nBond: Double;
   f, i, k, m, mb: Integer;
 begin
-  Configure(1, 0, False, True);
+  Configure(1, 0, True);
   S.Setup(N, Phi, T, Pot, False, 0);
   S.PressureFrames := 1;
   Run(2000);
@@ -174,7 +173,7 @@ var
   f, i: Integer;
   zm, H, w, th: Double;
 begin
-  Configure(0, G, False, True);
+  Configure(0, G, True);
   S.Setup(Nb, Phi, T, SW, False, 0);
   SetLength(P, 4 * Nb);
   Run(4000);
@@ -193,14 +192,14 @@ begin
     [Nb, Phi, T, G, H, S.Lz, zm, th, HydrostaticMeanHeight(Nb, S.Ly, S.Lz, T, G)]));
 end;
 
-procedure CaptureCheck(const Pot: TStepPotential; Phi, T0: Double; Frames: Integer);
+procedure ClusterCheck(const Pot: TStepPotential; Phi, T0: Double; Frames: Integer);
 var
   C: TClusterStats;
   P: array of Single;
   f, k: Integer;
   line: string;
 begin
-  Configure(1, 0, True, True);
+  Configure(1, 0, True);
   S.Setup(N, Phi, T0, Pot, False, 0);
   S.PressureFrames := 20;
   SetLength(P, 4 * N);
@@ -214,9 +213,9 @@ begin
       C := S.ClusterStats(Nbr, Shells);
       line := '';
       for k := 0 to Min(C.NBins - 1, 14) do line := line + Format(' %.2f', [C.Bins[k]]);
-      WriteLn(Format('  t %3.0f  bonds/sphere %.2f  free %.3f  clusters %d  largest %d  per sphere per time: formed %.3g captured %.3g broken %.3g;  max outside its shell %.3f;  sweeps %.1f (%d capped), substeps %d',
+      WriteLn(Format('  t %3.0f  bonds/sphere %.2f  free %.3f  clusters %d  largest %d  per sphere per time: formed %.3g broken %.3g;  max outside its shell %.3f;  sweeps %.1f (%d capped), substeps %d',
         [S.Time, 2 * S.Bonds / N, C.Monomers / N, C.Clusters, C.Largest,
-         2 * S.FormRate, 2 * S.CaptureRate, 2 * S.BreakRate, S.MaxOvershoot(Nbr, Shells, P),
+         2 * S.FormRate, 2 * S.BreakRate, S.MaxOvershoot(Nbr, Shells, P),
          S.MeanSweeps, S.CappedSweeps, S.Substeps]));
       WriteLn('        fraction in clusters of 1, 2-3, 4-7, ...:', line);
     end;
@@ -256,23 +255,23 @@ begin
     SetLength(Shells, N * MaxNeighbours);
     WriteLn('1. Eps = 0 (hard spheres)');
     HardSphereCheck(0.05);
-    WriteLn('2. capture off, no thermostat: energy');
+    WriteLn('2. no thermostat: energy');
     EnergyCheck(SW, 0.05, 0.6, 0);
     EnergyCheck(LJ, 0.05, 0.6, 0);
     EnergyCheck(LJ, 0.05, 1.0, 0.05);
     EnergyCheck(LJ, 0.05, 1.0, 0.05, 1.5);
-    WriteLn('3. capture off, thermostat: equilibrium at low density');
+    WriteLn('3. thermostat: equilibrium at low density');
     EquilibriumCheck(SW, 0.01, 2.0);
     EquilibriumCheck(LJ, 0.01, 2.0);
     EquilibriumCheck(LJ, 0.01, 1.2);
     WriteLn('4. gravity, Eps = 0');
     BarometricCheck(2000, 0.002, 1.0, 0.03);
     BarometricCheck(2000, 0.002, 1.0, 0.1);
-    WriteLn('5. capture on, thermostat, phi 0.05');
+    WriteLn('5. thermostat, phi 0.05: bonding and clusters');
     for k := 0 to High(Temps) do
     begin
       WriteLn(Format(' %s, T = %.2f', [LJ.Name, Temps[k]]));
-      CaptureCheck(LJ, 0.05, Temps[k], 800);
+      ClusterCheck(LJ, 0.05, Temps[k], 800);
     end;
   finally
     S.Free;

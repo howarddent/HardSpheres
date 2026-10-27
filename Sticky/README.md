@@ -77,7 +77,7 @@ sphere carries the energy away. Below the critical temperature the gas
 condenses into liquid in equilibrium with its vapour, and the speeds stay
 Maxwell–Boltzmann.
 
-**Capture (taken out of the program).** An earlier version had an
+**Capture (removed).** An earlier version had an
 inelastic "slow pairs stick" option, on by default: on a downhill step
 inward, a pair with less than ε of relative energy along its line of
 centres gave the step's energy off instead of speeding up, and ended up
@@ -86,9 +86,8 @@ because it breaks detailed balance: it bound far more vapour pairs than
 equilibrium does (38 % of the spheres against about 16 % in N2OPhase) and
 pulled the vapour's PV/NT down to 0.62 against about 0.95. Without it the
 default settings still condense into the same wetting film within 150 time
-units. The code is still in `ustickysim.pas` and `sticky.cl` (the
-`Capture` property, off by default), and `stickycheck` still exercises it.
-What was learned along the way:
+units. It has been removed from the engine and kernel too. What was
+learned along the way:
 
 Capture stood in for the third body that would carry a gas pair's
 energy away, so it applied only when one of the pair was free (had no
@@ -174,14 +173,14 @@ frames/s, against about 165 for the square well. The default is 5,000 spheres.
 | check | result |
 |---|---|
 | ε = 0, φ 0.05: PV/NT | 1.226, against Carnahan–Starling 1.227 |
-| capture off, no thermostat, φ 0.05, T from 0.6 | E/N constant to 4e-6 (square well) and 2e-5 (LJ) while 17,000–20,000 bonds form |
+| no thermostat, φ 0.05, T from 0.6 | E/N constant to 4e-6 (square well) and 2e-5 (LJ) while 17,000–20,000 bonds form |
 | the same, LJ, in gravity g 0.05 | constant to 2e-4 relative, as the gas falls |
 | the same with the floor's attraction 1.5 | E/N range 5e-4 against 4e-4 without |
-| capture off, thermostat, φ 0.01, square well, T 2 | 0.306 neighbours per sphere against ρ Σ e^(−εU/T) (4π/3)(R_s+1³ − R_s³) = 0.313; PV/NT 0.979 against 1 + B₂ρ = 0.978 |
+| thermostat, φ 0.01, square well, T 2 | 0.306 neighbours per sphere against ρ Σ e^(−εU/T) (4π/3)(R_s+1³ − R_s³) = 0.313; PV/NT 0.979 against 1 + B₂ρ = 0.978 |
 | the same, LJ, T 2 | within the cutoff 0.640 (0.660), within 1.5 0.256 (0.263); PV/NT 0.992 (0.990) |
 | the same, LJ, T 1.2 | 0.727 (0.746), 0.323 (0.329); PV/NT 0.948 (0.947) |
 | ε = 0, 2000 spheres, φ 0.002, g 0.03 / 0.1 | mean height 26.0 / 10.29, against 25.67 / 10.29 from hydrostatic equilibrium with the Carnahan–Starling pressure (ideal barometric 25.45 / 9.97) |
-| capture on, LJ, T 0.6–2 | no listed pair more than 0.051 outside its shell; at φ 0.05 and no gravity, T 2 and 1 stay a gas of small clusters, T 0.6 condenses |
+| thermostat, LJ, T 0.6–2 | no listed pair more than 0.043 outside its shell; at φ 0.05 and no gravity, T 2 and 1 stay a gas of small clusters, T 0.6 condenses |
 
 The neighbour counts run 2–3 % low because spheres near the walls have
 fewer neighbours. In the GUI the books balance:

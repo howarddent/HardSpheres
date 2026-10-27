@@ -12,7 +12,7 @@ begin
   S := TStickySim.Create;
   S.InitCL(ExtractFilePath(ParamStr(0)) + '../../Sticky/sticky.cl', nil, nil);
   WriteLn(S.DeviceName);
-  S.Eps := 1; S.Gravity := 0; S.FloorEps := 0; S.Capture := False; S.Thermostat := True;
+  S.Eps := 1; S.Gravity := 0; S.FloorEps := 0; S.Thermostat := True;
   S.SimTimePerFrame := 0.1;
   for k := 0 to 2 do
   begin

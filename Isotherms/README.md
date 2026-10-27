@@ -87,8 +87,8 @@ Like the others, it won't run OpenCL on an integrated GPU unless given
 `--allow-igpu`.
 
 Left out compared with the programs it joins:
-- from StickySpheres and N2OPhase: the well-depth slider, the square-well
-  potential and capture;
+- from StickySpheres and N2OPhase: the well-depth slider and the square-well
+  potential;
 - from HardSpheres: the adiabat on the P–V diagram.
 
 The wall pressure of a dilute gas of a few thousand spheres is noisy (about
