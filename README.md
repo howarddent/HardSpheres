@@ -41,6 +41,34 @@ On a hybrid-graphics laptop, OpenGL runs on the integrated GPU unless NVIDIA PRI
 
 The program will not run OpenCL on an integrated GPU (one sharing memory with the CPU). On a laptop that GPU drives the display, and a hang there can lock up the desktop past a failed GPU reset. That can happen if the NVIDIA driver isn't loaded, for example after a kernel update without its NVIDIA module. With no other GPU, the program stops with an error. Pass `--allow-igpu` (to `HardSpheres` or `gascheck`) to run on the integrated GPU anyway.
 
+### Speed: discrete against integrated GPU
+
+The hard-sphere simulation (`ugassim.pas`) timed headless on each GPU of a
+laptop with an Intel Raptor Lake-S UHD and an NVIDIA RTX 5070 Laptop GPU
+(8 GB). Simulation only, no drawing; 5 substeps per frame in every case.
+
+| spheres | packing fraction | RTX 5070 | Intel UHD | 5070 faster by |
+|---|---|---|---|---|
+| 5,000 | 0.05 | 4,405 frames/s | 667 frames/s | ×6.6 |
+| 100,000 | 0.05 | 951 frames/s | 55 frames/s | ×17 |
+| 100,000 | 0.30 | 570 frames/s | 38 frames/s | ×15 |
+| 1,000,000 | 0.30 | 29 frames/s | 2.5 frames/s | ×12 |
+
+At a few thousand spheres both are far above the screen's refresh rate,
+and the time per frame is mostly the fixed cost of launching kernels. From
+about 100,000 spheres the integrated GPU falls below a smooth frame rate,
+while also drawing the desktop. The integrated GPU ran these without
+stalling the display.
+
+To choose the GPU, restrict the OpenCL loader to one driver. Point
+`OCL_ICD_VENDORS` at an empty or missing folder, or the drivers listed in
+`/etc/OpenCL/vendors` load as well:
+
+```
+OCL_ICD_VENDORS=/nonexistent OCL_ICD_FILENAMES=libnvidia-opencl.so.1 ./HardSpheres
+OCL_ICD_VENDORS=/nonexistent OCL_ICD_FILENAMES=/usr/lib/x86_64-linux-gnu/intel-opencl/libigdrcl.so ./HardSpheres --allow-igpu
+```
+
 ## Physics
 
 Units: sphere diameter 1, mass 1, k_B = 1.
