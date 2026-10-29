@@ -88,6 +88,7 @@ type
     FFpsFrames: Integer;
     FFps: Double;
     FStartPV, FStartTV: Double;
+    FStartT, FStartV: Double;       // T and V per sphere before the move
     FError: string;
     FSnapshot: string;
     FSnapFrames: Integer;
@@ -386,6 +387,8 @@ begin
   begin
     FStartPV := FSim.Pressure * Power(FSim.Volume, 5 / 3);
     FStartTV := FSim.Temperature * Power(FSim.Volume, 2 / 3);
+    FStartT := FSim.Temperature;
+    FStartV := FSim.Volume / FSim.Count;
   end;
   FSim.LzTarget := SliderPiston;
 end;
@@ -491,6 +494,7 @@ begin
   SetLength(FVel, 4 * n);
   SetLength(FHist, 0);
   FStartPV := 0;
+  FStartT := 0;
   FStartTV := 0;
   FFrames := 0;
   // the volume axis: to the farthest the piston can go, plus a margin
@@ -539,6 +543,8 @@ begin
       begin
         FStartPV := FSim.Pressure * Power(FSim.Volume, 5 / 3);
         FStartTV := FSim.Temperature * Power(FSim.Volume, 2 / 3);
+        FStartT := FSim.Temperature;
+        FStartV := FSim.Volume / FSim.Count;
         FSim.LzTarget := FSim.Lz * StrToFloatDef(Application.GetOptionValue('compress'), 0.5);
       end;
       if FFrames mod 10 = 1 then
@@ -784,11 +790,17 @@ begin
   memPV.SetBounds(6, PVH + 4, FPVPanel.ClientWidth - 12, FPVPanel.ClientHeight - PVH - 10);
 end;
 
+// the hard-sphere (Carnahan-Starling) excess free energy over NkT
+function HSExcess(phi: Double): Double;
+begin
+  Result := (4 * phi - 3 * phi * phi) / Sqr(1 - phi);
+end;
+
 // the state on the P-V diagram, per sphere, and what it is doing
 procedure TfmMain.UpdatePV;
 var
   L: TStrings;
-  T, v, P, Z, Zcs, adiabat: Double;
+  T, v, P, Z, Zcs, T0: Double;
   moved: Boolean;
 begin
   // the pressure is smoothed over ~20 frames: wait for it to settle
@@ -798,12 +810,8 @@ begin
   P := FSim.Pressure;
   if (T <= 0) or (P <= 0) then Exit;
   moved := FStartPV > 0;
-  // FStartPV is P V^(5/3) for the whole box; per sphere it is / N^(5/3)
-  if moved and not FSim.Thermostat then
-    adiabat := FStartPV / Power(FSim.Count, 5 / 3)
-  else
-    adiabat := 0;
-  FPV.SetState(T, v, P, adiabat);
+  if moved and not FSim.Thermostat then T0 := FStartT else T0 := 0;
+  FPV.SetState(T, v, P, T0, FStartV);
   Z := P * v / T;
   Zcs := CarnahanStarling(FSim.PackingFraction);
   L := memPV.Lines;
@@ -828,8 +836,15 @@ begin
     else
       L.Add('Temperature not held: a slow piston compresses the gas adiabatically. '
         + 'The work done heats it, so the dot climbs across the isotherms along the '
-        + 'dotted adiabat, PV^(5/3) constant, steeper than Boyle''s hyperbola. '
+        + 'adiabat, steeper than Boyle''s hyperbola. For an ideal gas that is '
+        + 'PV^(5/3) constant (dotted); hard spheres follow the steeper solid one, '
+        + 'since their own volume makes each step of compression cost more work. '
         + 'Tick "hold T" for an isothermal compression.');
+    if moved and not FSim.Thermostat then
+      L.Add(Format('Since the move began T has risen %.3f times: hard spheres %.3f, '
+        + 'an ideal gas %.3f.',
+        [T / FStartT, Power(FStartV / v, 2 / 3) * Exp(2 / 3 * (HSExcess(FSim.PackingFraction)
+          - HSExcess(Pi / 6 / FStartV))), Power(FStartV / v, 2 / 3)]));
     L.Add('');
     L.Add('However far the piston goes there is no flat part: with no attraction '
       + 'between the spheres the gas never condenses, unlike a vapour '

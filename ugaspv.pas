@@ -13,10 +13,16 @@ unit ugaspv;
     - the hard-sphere isotherm P = (T/v) Z(phi), Z the Carnahan-Starling
       compressibility factor and phi = pi/(6v): it parts from the ideal
       one only when the spheres' own volume starts to matter;
-    - once the piston has moved without the thermostat, the ideal-gas
-      adiabat through the state before the move, P v^(5/3) constant,
-      dotted: a fast enough (but still slow) compression follows it and
-      climbs across the isotherms as the gas heats.
+    - once the piston has moved without the thermostat, the adiabats
+      through the state before the move, which a slow compression
+      follows, climbing across the isotherms as the gas heats: the
+      ideal gas's, P v^(5/3) constant (dotted), and the hard spheres',
+      solid. With all the energy kinetic, dU = -P dV gives
+      d ln T = -(2/3) Z d ln v, which with Carnahan-Starling integrates
+      to T v^(2/3) exp(-(2/3) a(phi)) constant, a = (4 phi - 3 phi^2)/
+      (1 - phi)^2 (the excess free energy over NkT). It is steeper than
+      the ideal one: the excluded volume makes each step of compression
+      cost more work, and all of it goes into heat.
   There is no flat part: with no attraction the gas never condenses (the
   contrast with ../N2O).
 *******************************************************************************}
@@ -37,7 +43,7 @@ type
   private
     FHasState: Boolean;
     FT, FV, FP: Double;
-    FAdiabat: Double;             // P v^(5/3) of the adiabat, 0 for none
+    FT0, FV0: Double;             // the state the adiabats pass through; FT0 = 0 for none
     FTrail: array of TGasPVPoint;
     FTrailLen: Integer;
     FPMax: Double;
@@ -48,7 +54,7 @@ type
   public
     VMax: Double;                 // the volume axis's extent, per sphere
     constructor Create(AOwner: TComponent); override;
-    procedure SetState(T, V, P, Adiabat: Double);
+    procedure SetState(T, V, P, T0, V0: Double);
     procedure ClearState;
   end;
 
@@ -56,7 +62,7 @@ implementation
 
 const
   PlotL = 58; PlotR = 12; PlotT = 24; PlotB = 48;
-  TrailMax = 800;
+  TrailMax = 6000;              // ~60000 frames at one point per 10
   VClose = Pi / 6 / 0.5;          // per-sphere volume at packing 0.5
 
 constructor TGasPVDiagram.Create(AOwner: TComponent);
@@ -81,10 +87,10 @@ begin
   Result := ClientHeight - PlotB - Round(P / FPMax * (ClientHeight - PlotT - PlotB));
 end;
 
-procedure TGasPVDiagram.SetState(T, V, P, Adiabat: Double);
+procedure TGasPVDiagram.SetState(T, V, P, T0, V0: Double);
 begin
   FHasState := True;
-  FT := T; FV := V; FP := P; FAdiabat := Adiabat;
+  FT := T; FV := V; FP := P; FT0 := T0; FV0 := V0;
   if FTrailLen = TrailMax then
   begin
     Move(FTrail[1], FTrail[0], (TrailMax - 1) * SizeOf(TGasPVPoint));
@@ -142,19 +148,32 @@ var
   end;
 
   // the curve P(v) from the packing-0.5 volume to the axis end
+  // the hard-sphere excess free energy over NkT
+  function AEx(phi: Double): Double;
+  begin
+    Result := (4 * phi - 3 * phi * phi) / Sqr(1 - phi);
+  end;
+
+  // 0: ideal isotherm, 1: hard-sphere isotherm, 2: ideal adiabat,
+  // 3: hard-sphere adiabat
   procedure Curve(Kind: Integer);
   var
     j: Integer;
-    vv, pp: Double;
+    vv, pp, phi0, Tv: Double;
   begin
+    phi0 := Pi / 6 / Max(FV0, 1e-9);
     for j := 0 to NPts do
     begin
       vv := VClose + (VMax - VClose) * j / NPts;
       case Kind of
         0: pp := T / vv;
         1: pp := T / vv * CarnahanStarling(Pi / 6 / vv);
+        2: pp := FT0 * CarnahanStarling(phi0) / FV0 * Power(FV0 / vv, 5 / 3);
       else
-        pp := FAdiabat / Power(vv, 5 / 3);
+        begin
+          Tv := FT0 * Power(FV0 / vv, 2 / 3) * Exp(2 / 3 * (AEx(Pi / 6 / vv) - AEx(phi0)));
+          pp := Tv / vv * CarnahanStarling(Pi / 6 / vv);
+        end;
       end;
       Pts[j] := Point(XOf(vv), YOf(pp));
     end;
@@ -216,12 +235,15 @@ begin
   Curve(0);
   C.Pen.Style := psSolid;
   // the adiabat through the state before the piston moved
-  if FAdiabat > 0 then
+  if FT0 > 0 then
   begin
     C.Pen.Color := RGBToColor(150, 0, 150);
     C.Pen.Style := psDot;
     Curve(2);
     C.Pen.Style := psSolid;
+    C.Pen.Width := 2;
+    Curve(3);
+    C.Pen.Width := 1;
   end;
 
   // the state: trail and red dot
@@ -243,7 +265,7 @@ begin
   x := x1 - 200; y := y0 + 8;
   C.Brush.Color := clWhite;
   C.Pen.Color := RGBToColor(180, 180, 180);
-  if FAdiabat > 0 then k := 5 else k := 4;
+  if FT0 > 0 then k := 6 else k := 4;
   C.Rectangle(x - 6, y - 4, x1 - 6, y + 16 * k + 2);
   C.Pen.Width := 2; C.Pen.Color := RGBToColor(20, 60, 160);
   C.Line(x, y + 7, x + 24, y + 7);
@@ -253,11 +275,15 @@ begin
   C.Line(x, y + 7, x + 24, y + 7);
   Lbl(x + 30, y, 'ideal gas, PV = NkT', RGBToColor(190, 110, 0), False, False);
   Inc(y, 16);
-  if FAdiabat > 0 then
+  if FT0 > 0 then
   begin
-    C.Pen.Color := RGBToColor(150, 0, 150); C.Pen.Style := psDot;
+    C.Pen.Style := psSolid; C.Pen.Width := 2; C.Pen.Color := RGBToColor(150, 0, 150);
     C.Line(x, y + 7, x + 24, y + 7);
-    Lbl(x + 30, y, 'adiabat, PV^(5/3) const', RGBToColor(150, 0, 150), False, False);
+    Lbl(x + 30, y, 'adiabat, hard spheres', RGBToColor(150, 0, 150), False, False);
+    Inc(y, 16);
+    C.Pen.Width := 1; C.Pen.Style := psDot;
+    C.Line(x, y + 7, x + 24, y + 7);
+    Lbl(x + 30, y, 'adiabat, ideal gas (PV^5/3)', RGBToColor(150, 0, 150), False, False);
     Inc(y, 16);
   end;
   C.Pen.Style := psSolid;

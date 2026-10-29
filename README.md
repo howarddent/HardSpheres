@@ -69,6 +69,22 @@ OCL_ICD_VENDORS=/nonexistent OCL_ICD_FILENAMES=libnvidia-opencl.so.1 ./HardSpher
 OCL_ICD_VENDORS=/nonexistent OCL_ICD_FILENAMES=/usr/lib/x86_64-linux-gnu/intel-opencl/libigdrcl.so ./HardSpheres --allow-igpu
 ```
 
+## The P–V diagram
+
+The panel at the far right (`ugaspv.pas`) plots the gas's state as a red dot, pressure against volume per sphere, with a trail of the path it has taken. Against it, at the current temperature:
+
+- the **ideal-gas isotherm**, P = NkT/V (dashed): Boyle's hyperbola;
+- the **hard-sphere isotherm**, the same times the Carnahan–Starling factor Z(φ). It parts from the ideal one only once the spheres fill a noticeable part of the box;
+- after a piston move with the thermostat off, the two **adiabats** through the state before the move: the ideal gas's, PV^(5/3) constant (dotted), and the hard spheres' (solid). All the energy is kinetic, so dU = −P dV gives d ln T = −⅔ Z d ln v, which integrates to T v^(2/3) exp(−⅔ a(φ)) constant, with a = (4φ − 3φ²)/(1 − φ)². The hard-sphere adiabat is steeper because the excluded volume makes each step of compression cost more work, and all of that work becomes heat.
+
+The text under the diagram says what the dot is doing. However far the piston goes, there is no flat part: with no attraction the gas never condenses. Compare `N2O/`, where it does.
+
+![A slow adiabatic compression on the P–V diagram: the dot follows the hard-sphere adiabat](docs/hardspheres-pv.png)
+
+*100,000 spheres compressed slowly (`--compress=0.3 --speed=0.1`, 16,000 frames) from packing fraction 0.05 to 0.17 with the thermostat off. The path follows the solid hard-sphere adiabat throughout. T rose 3.45 times, against 3.50 from the hard-sphere adiabat and 2.27 for an ideal gas.*
+
+With "hold T" ticked, the same compression keeps to the hard-sphere isotherm. At the end PV/NkT is 2.016 against Carnahan–Starling's 2.094. That 4 % shortfall is the wall effect described under Physics below.
+
 ## Physics
 
 Units: sphere diameter 1, mass 1, k_B = 1.
@@ -102,6 +118,7 @@ A compression is quasi-static only if the piston is slow compared with sound (�
 - `ugassim.pas`: `TGasSim`, the simulation: buffers, frames, measurements, the piston and the thermostat.
 - `clgl.pas`: runtime OpenCL bindings, including `cl_khr_gl_sharing`.
 - `umain.pas`: the window: shader-drawn sphere sprites, orbit camera, sliders, readouts, and the speed histogram against Maxwell–Boltzmann.
+- `ugaspv.pas`: the P–V diagram, with the isotherms and adiabats.
 - `gascheck.lpr`: headless checks.
 
 Command line: `--n=`, `--phi=`, `--maxwell`, `--hold`, `--speed=`, `--compress=<f>`, `--snapshot=<png>` with `--frames=`.
