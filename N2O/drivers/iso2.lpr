@@ -1,3 +1,15 @@
+{
+  This file is part of HardSpheres.
+  Copyright (C) 2026 Howard Dent
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  HardSpheres is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free
+  Software Foundation, either version 3 of the License, or (at your
+  option) any later version. It is distributed WITHOUT ANY WARRANTY; see
+  the file LICENSE at the top of the repository for details.
+}
+
 program iso2;
 { N2O isotherms from the stepped-LJ model, 1M spheres, fixed volume per
   point, at T* 0.9134, 0.9803, 1.0350 (Tc) and 1.2478: 0, 20, 36 and 100 C

@@ -1,3 +1,15 @@
+{
+  This file is part of HardSpheres.
+  Copyright (C) 2026 Howard Dent
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  HardSpheres is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free
+  Software Foundation, either version 3 of the License, or (at your
+  option) any later version. It is distributed WITHOUT ANY WARRANTY; see
+  the file LICENSE at the top of the repository for details.
+}
+
 program bench;
 { Speed check: 10 time units of 1M spheres at T* 0.953 and rho 0.02, 0.3
   and 0.7, with the substep and sweep counts. Usage: ./bench }

@@ -1,4 +1,16 @@
 /*
+  This file is part of HardSpheres.
+  Copyright (C) 2026 Howard Dent
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  HardSpheres is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free
+  Software Foundation, either version 3 of the License, or (at your
+  option) any later version. It is distributed WITHOUT ANY WARRANTY; see
+  the file LICENSE at the top of the repository for details.
+*/
+
+/*
   HardSpheres kernels: N hard spheres of diameter 1 and mass 1 in the box
   [0, Lx] x [0, Ly] x [0, Lz], the top face z = Lz a piston moving at W.
   One substep of length dt is

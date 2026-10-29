@@ -132,4 +132,17 @@ Command line: `--n=`, `--phi=`, `--maxwell`, `--hold`, `--speed=`, `--compress=<
 
 ## Licence
 
-MIT; see [LICENSE](LICENSE). Covers `Sticky/`, `N2O/` and `Isotherms/` too.
+Copyright (C) 2026 Howard Dent.
+
+HardSpheres is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. It is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+[LICENSE](LICENSE) for the full text. This covers `Sticky/`, `N2O/` and
+`Isotherms/` too.
+
+The saturation tables (`N2O/n2odata.inc`, `Isotherms/*data.inc`,
+`Water/water_sat_T.tsv`) come from the NIST Chemistry WebBook and are not
+covered by this licence.

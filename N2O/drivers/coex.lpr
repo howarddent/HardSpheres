@@ -1,3 +1,15 @@
+{
+  This file is part of HardSpheres.
+  Copyright (C) 2026 Howard Dent
+  SPDX-License-Identifier: GPL-3.0-or-later
+
+  HardSpheres is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free
+  Software Foundation, either version 3 of the License, or (at your
+  option) any later version. It is distributed WITHOUT ANY WARRANTY; see
+  the file LICENSE at the top of the repository for details.
+}
+
 program coex;
 { Liquid-vapour coexistence and the critical temperature: 200k spheres
   at rho 0.31 (near rho_c), long runs. The wall pressure below Tc is the
