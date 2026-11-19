@@ -76,7 +76,7 @@ lazbuild --ws=gtk2 Isotherms.lpi
 ```
 
 It uses the simulation in `../Sticky` (`ustickysim.pas`, and `sticky.cl`,
-found there at run time) and `../clgl.pas`. Options:
+built in, or read from there at run time if present) and `../clgl.pas`. Options:
 - from StickySpheres: `--n`, `--phi`, `--g`, `--floor`, `--temp`, `--nohold`,
   `--maxwell`, `--snapshot`, `--frames`;
 - `--substance=n2o|co2|water`, and `--ideal` (attraction off);

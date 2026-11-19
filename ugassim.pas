@@ -65,6 +65,7 @@ type
     FPos, FVelA, FVelB, FCorr, FPartner, FCounts, FCells, FOverflow, FNColl, FPartial: cl_mem;
     FShared: Boolean;             // FPos is the GL buffer
     FDeviceName: string;
+    FKernelOrigin: string;
     FN, FGroups, FLocal: Integer;
     FGrid: array[0..3] of LongInt;
     FNCells: Integer;
@@ -134,6 +135,9 @@ type
     property Substeps: Integer read FSubsteps;
     property Shared: Boolean read FShared;
     property DeviceName: string read FDeviceName;
+    // where the kernel source came from: the file given to InitCL, if it
+    // exists (for editing kernels without a rebuild), else 'built in'
+    property KernelOrigin: string read FKernelOrigin;
     property Context: cl_context read FCtx;
   end;
 
@@ -141,6 +145,11 @@ type
 function CarnahanStarling(Phi: Double): Double;
 
 implementation
+
+// GasKernelSource: gas.cl as a string constant, made by tools/cl2inc.py -
+// regenerate it after editing the kernel:
+//   python3 tools/cl2inc.py gas.cl gas_cl.inc GasKernelSource
+{$I gas_cl.inc}
 
 const
   LocalSize = 256;
@@ -293,12 +302,21 @@ begin
   FQueue := clCreateCommandQueue(FCtx, FDevice, 0, @Err);
   CheckCL(Err, 'clCreateCommandQueue');
 
-  SL := TStringList.Create;
-  try
-    SL.LoadFromFile(KernelFile);
-    Src := SL.Text;
-  finally
-    SL.Free;
+  if (KernelFile <> '') and FileExists(KernelFile) then
+  begin
+    SL := TStringList.Create;
+    try
+      SL.LoadFromFile(KernelFile);
+      Src := SL.Text;
+    finally
+      SL.Free;
+    end;
+    FKernelOrigin := KernelFile;
+  end
+  else
+  begin
+    Src := GasKernelSource;
+    FKernelOrigin := 'built in';
   end;
   BuildProgram(Src);
 end;

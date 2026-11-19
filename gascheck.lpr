@@ -89,7 +89,7 @@ begin
     S.AllowIntegrated := AllowIGPU;
     S.InitCL(Kernel, nil, nil);
     S.Setup(N, Phi, 1.0, True, 0);
-    if Phi = 0.05 then WriteLn('device: ', S.DeviceName);
+    if Phi = 0.05 then WriteLn('device: ', S.DeviceName, ', kernels: ', S.KernelOrigin);
     k0 := SpeedRatio(S);
     S.Frame;
     T0 := S.Temperature;

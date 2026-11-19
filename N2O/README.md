@@ -41,7 +41,7 @@ lazbuild --ws=gtk2 N2OPhase.lpi
 ```
 
 It uses the simulation in `../Sticky` (`ustickysim.pas`, and `sticky.cl`,
-found there at run time) and `../clgl.pas`, so build Sticky's sources as they
+built in, or read from there at run time if present) and `../clgl.pas`, so build Sticky's sources as they
 are; nothing is copied. Options are those of StickySpheres plus
 `--compress=<f>` (after 100 frames move the lid to f times its height)
 and `--speed=<piston speed>`.

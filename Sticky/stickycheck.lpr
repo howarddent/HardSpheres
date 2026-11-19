@@ -259,7 +259,7 @@ begin
     S.MaxSweeps := Sweeps;
     S.AllowIntegrated := AllowIGPU;
     S.InitCL(ExtractFilePath(ParamStr(0)) + 'sticky.cl', nil, nil);
-    WriteLn('OpenCL on ', S.DeviceName, ', N = ', N, ', at most ', Sweeps, ' sweeps per substep');
+    WriteLn('OpenCL on ', S.DeviceName, ' (kernels ', S.KernelOrigin, '), N = ', N, ', at most ', Sweeps, ' sweeps per substep');
     Write('LJ shells:');
     for k := 0 to LJ.K - 1 do Write(Format(' [%.2f,%.2f) %.3f', [LJ.R[k], LJ.R[k + 1], LJ.U[k]]));
     WriteLn;

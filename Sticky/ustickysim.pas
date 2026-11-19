@@ -86,6 +86,7 @@ type
       FCounts, FCells, FOverflow, FCnt, FPartial, FPending, FActA, FActB: cl_mem;
     FShared: Boolean;
     FDeviceName: string;
+    FKernelOrigin: string;
     FN, FGroups, FLocal: Integer;
     FGrid: array[0..3] of LongInt;
     FNCells: Integer;
@@ -185,6 +186,9 @@ type
     property CappedSweeps: Integer read FCappedSweeps;
     property Shared: Boolean read FShared;
     property DeviceName: string read FDeviceName;
+    // where the kernel source came from: the file given to InitCL, if it
+    // exists (for editing kernels without a rebuild), else 'built in'
+    property KernelOrigin: string read FKernelOrigin;
   end;
 
 function SquareWellPotential(Lambda: Double): TStepPotential;
@@ -197,6 +201,11 @@ function SecondVirial(const Pot: TStepPotential; Eps, T: Double): Double;
 function LowDensityNeighbours(const Pot: TStepPotential; Edge: Integer; Eps, T, Rho: Double): Double;
 
 implementation
+
+// StickyKernelSource: sticky.cl as a string constant, made by tools/cl2inc.py -
+// regenerate it after editing the kernel:
+//   python3 ../tools/cl2inc.py sticky.cl sticky_cl.inc StickyKernelSource
+{$I sticky_cl.inc}
 
 const
   LocalSize = 256;
@@ -411,12 +420,21 @@ begin
   FQueue := clCreateCommandQueue(FCtx, FDevice, 0, @Err);
   CheckCL(Err, 'clCreateCommandQueue');
 
-  SL := TStringList.Create;
-  try
-    SL.LoadFromFile(KernelFile);
-    Src := SL.Text;
-  finally
-    SL.Free;
+  if (KernelFile <> '') and FileExists(KernelFile) then
+  begin
+    SL := TStringList.Create;
+    try
+      SL.LoadFromFile(KernelFile);
+      Src := SL.Text;
+    finally
+      SL.Free;
+    end;
+    FKernelOrigin := KernelFile;
+  end
+  else
+  begin
+    Src := StickyKernelSource;
+    FKernelOrigin := 'built in';
   end;
   BuildProgram(Src);
 end;
