@@ -81,7 +81,8 @@ def main(argv):
     if check:
         try:
             with open(inc_path, encoding="utf-8", newline="") as f:
-                same = f.read() == text
+                # a Windows checkout may have given the include CRLF endings
+                same = f.read().replace("\r\n", "\n") == text
         except FileNotFoundError:
             same = False
         if not same:

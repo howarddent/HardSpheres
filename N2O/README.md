@@ -33,6 +33,19 @@ vapour at 49.5 bar, 70 % liquid, as in a cylinder. Near the critical point
 (36.4 °C) the flat part of the isotherm is short and the liquid and vapour
 look much alike.*
 
+## Windows installer
+
+A tag `n2o-v<version>` (e.g. `n2o-v1.0`) runs
+`.github/workflows/windows-installers.yml`, which builds N2OPhase on a
+GitHub Windows machine and attaches `N2OPhase-<version>-windows-x64-setup.exe`
+to a GitHub Release of that tag; it can also be run by hand from the Actions
+tab, which keeps the installer as a downloadable artifact. The installer
+(`installer/N2OPhase.iss`, Inno Setup) installs for the current user without
+administrator rights, with a Start-menu shortcut and an uninstaller. Nothing
+else is needed beyond a graphics driver with OpenCL: the kernels and the
+reference data are compiled in. It is not code-signed, so Windows SmartScreen
+warns before it runs: choose More info, then Run anyway.
+
 ## Build and run
 
 ```

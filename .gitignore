@@ -8,3 +8,4 @@ backup/
 HardSpheres
 gascheck
 *.exe
+installer/out/

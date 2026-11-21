@@ -1,0 +1,86 @@
+# Build the N2OPhase Windows installer.
+#
+# Runs on a tag n2o-v<version> (e.g. n2o-v1.0), and then attaches the
+# installer to a GitHub Release of that tag, or by hand from the Actions tab
+# ("Run workflow"), which only keeps the installer as a downloadable
+# artifact of the run.
+#
+# The steps: refuse a stale kernel include (tools/cl2inc.py --check), build
+# N2O/N2OPhase.lpi with lazbuild, check it links no OpenCL DLL at load time
+# (OpenCL must be loaded at run time, so the program can start without it),
+# then Inno Setup on installer/N2OPhase.iss. The installer is not
+# code-signed, so Windows SmartScreen warns before running it ("More info",
+# "Run anyway").
+name: Windows installers
+
+on:
+  push:
+    tags: ['n2o-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  n2ophase:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: gcarreno/setup-lazarus@v3
+        with:
+          lazarus-version: stable
+          with-cache: false
+
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/n2o-v* ]]; then
+            V="${GITHUB_REF#refs/tags/n2o-v}"
+          else
+            V="0.0.0-dev.${GITHUB_SHA::7}"
+          fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - name: Check the kernel includes
+        run: |
+          python tools/cl2inc.py --check Sticky/sticky.cl Sticky/sticky_cl.inc StickyKernelSource
+          python tools/cl2inc.py --check gas.cl gas_cl.inc GasKernelSource
+
+      - name: Build N2OPhase
+        run: |
+          lazbuild --ws=win32 --build-mode=Default -B N2O/N2OPhase.lpi > lazbuild.log 2>&1 ||
+            { grep -iE "error|fatal" lazbuild.log | head -20; exit 1; }
+          ls -l N2O/N2OPhase.exe
+          if command -v objdump > /dev/null; then
+            objdump -p N2O/N2OPhase.exe | sed -n 's/.*DLL Name: //p' | tee deps.txt
+            ! grep -qi opencl deps.txt
+          fi
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DAppVersion=$env:VERSION" installer\N2OPhase.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: N2OPhase-${{ env.VERSION }}-windows-x64
+          path: |
+            installer/out/N2OPhase-*-setup.exe
+            N2O/N2OPhase.exe
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/n2o-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SETUP=$(ls installer/out/N2OPhase-*-setup.exe)
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --title "N2OPhase $VERSION" \
+              --notes "N2OPhase $VERSION for Windows (64-bit). Download the setup file and run it; Windows may warn that it is from an unknown publisher, since it is not code-signed: choose More info, then Run anyway. Needs a graphics driver with OpenCL."
+          gh release upload "$GITHUB_REF_NAME" "$SETUP" --clobber
