@@ -53,6 +53,7 @@ jobs:
         run: |
           lazbuild --ws=win32 --build-mode=Default -B N2O/N2OPhase.lpi > lazbuild.log 2>&1 ||
             { grep -iE "error|fatal" lazbuild.log | head -20; exit 1; }
+          strip N2O/N2OPhase.exe   # drop the debug info: ~26 MB to a few
           ls -l N2O/N2OPhase.exe
           if command -v objdump > /dev/null; then
             objdump -p N2O/N2OPhase.exe | sed -n 's/.*DLL Name: //p' | tee deps.txt
